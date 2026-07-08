@@ -5,6 +5,7 @@ from django.utils import timezone
 from datetime import timedelta
 from accounts.models import Customer
 from products.models import Product
+from offers.models import Offer
 
 class RedemptionRecord(models.Model):
     STATUS_CHOICES = (
@@ -17,6 +18,7 @@ class RedemptionRecord(models.Model):
     )
     customer = models.ForeignKey(Customer , on_delete = models.CASCADE , related_name="redemptions")
     product = models.ForeignKey(Product , on_delete=models.SET_NULL , null=True , blank=True)
+    offer = models.ForeignKey(Offer, on_delete=models.SET_NULL, null=True, blank=True)
     status = models.CharField(max_length=20 ,choices=STATUS_CHOICES ,default="generated")
     points_used = models.PositiveIntegerField(default =0)
     invoice_number = models.CharField(max_length=50  , blank = True , null=True)

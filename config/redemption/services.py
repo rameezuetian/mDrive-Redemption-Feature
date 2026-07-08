@@ -44,7 +44,7 @@ def validate_qr_code(code):
     except QRCode.DoesNotExist:
         return None , "Invalid QR code"
     
-    if qr.is_used():
+    if qr.is_used:
         return None , "QR code already Used"
     
     if qr.is_expire():
