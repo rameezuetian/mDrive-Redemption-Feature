@@ -140,4 +140,13 @@ class ScanQRView(APIView):
         redemption.save()
 
         serializer = RedemptionRecordSerializer(redemption)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    
+    
+class RedemptionHistoryView(APIView):
+    def get(self , request , customer_id):
+        customer = get_object_or_404(Customer , pk = customer_id)
+        records = RedemptionRecord.objects.filter(customer=customer).order_by('-created_at')
+        serializer = RedemptionRecordSerializer(records , many=True)
+        return Response(serializer.data)
+    
