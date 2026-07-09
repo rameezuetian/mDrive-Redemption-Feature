@@ -140,6 +140,7 @@ class ScanQRView(APIView):
         redemption.save()
 
         serializer = RedemptionRecordSerializer(redemption)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
     
     
