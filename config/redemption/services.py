@@ -68,7 +68,7 @@ def validate_qr_code(code):
     return qr, None
 
 
-def check_offer_validity(offer):
+def check_offer_validity(offer , customer):
     """
     Checks the offer is active and within its date range.
     """
@@ -79,6 +79,11 @@ def check_offer_validity(offer):
 
     if today < offer.start_date or today > offer.end_date:
         return False, "Offer is not in valid range"
+    
+    if offer.membership_eligibility:
+        eligible_tiers = [tier.strip().lower()  for tier in offer.membership_eligibility.split(',')]
+        if customer.membership_level.lower()  not in eligible_tiers:
+            return False, f"This offer is only available for {offer.membership_eligibility} members"
 
     return True, None
 

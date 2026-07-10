@@ -71,7 +71,7 @@ class RedeemOfferView(APIView):
         offer = get_object_or_404(Offer, pk=offer_id)
 
         # Step 1: check offer is valid (active + within date range)
-        is_valid, error = check_offer_validity(offer)
+        is_valid, error = check_offer_validity(offer , customer)
         if not is_valid:
             return Response({"error": error}, status=status.HTTP_400_BAD_REQUEST)
 
