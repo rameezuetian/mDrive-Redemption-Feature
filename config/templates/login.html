@@ -1,15 +1,30 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
     <title>mDrive Wallet - Login</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/semantic-ui@2.5.0/dist/semantic.min.css">
+    <style>
+        body {
+            background-color: #f7f8fa;
+        }
+        .dashboard-card {
+            margin-top: 20px;
+        }
+    </style>
 </head>
 <body>
+
 <div class="ui middle aligned center aligned grid" style="height: 100vh;">
     <div class="column" style="max-width: 450px;">
+
         <h2 class="ui teal image header">
-            <div class="content">mDrive Wallet Login</div>
+            <div class="content">
+                mDrive Wallet Login
+            </div>
         </h2>
+
+        <!-- LOGIN FORM -->
         <form class="ui large form" id="loginForm">
             <div class="ui stacked segment">
                 <div class="field">
@@ -24,23 +39,61 @@
                         <input type="password" name="password" placeholder="Password" required>
                     </div>
                 </div>
-                <button class="ui fluid large teal submit button" type="submit">Login</button>
+                <button class="ui fluid large teal submit button" type="submit">
+                    Login
+                </button>
             </div>
+
             <div class="ui error message" id="errorMessage"></div>
         </form>
-        <div class="ui message">
-            New here? <a href="/signup/">Sign Up</a>
+
+        <div class="ui message" id="signupPrompt">
+    New here? <a href="/signup/">Sign Up</a>
+</div>
+
+        <!-- DASHBOARD (shown after successful login) -->
+        <div class="ui segment dashboard-card" id="welcomeBox" style="display:none;">
+            <h3 class="ui header" id="welcomeText"></h3>
+
+            <div class="ui two column grid">
+                <div class="column">
+                    <div class="ui teal statistic">
+                        <div class="value" id="pointsValue">0</div>
+                        <div class="label">Wallet Points</div>
+                    </div>
+                </div>
+                <div class="column">
+                    <div class="ui olive statistic">
+                        <div class="value" id="membershipValue">-</div>
+                        <div class="label">Membership</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="ui divider"></div>
+
+            <p style="color:#888; font-size: 13px;">
+                Demo purposes only — simulates IMS crediting wallet points after a real purchase.
+            </p>
+
+            <button class="ui fluid teal button" id="topUpBtn">
+                Add 500 Points (Demo Top-Up)
+            </button>
+
+            <div class="ui success message" id="topUpMessage" style="display:none; margin-top: 10px;"></div>
+
+            <button class="ui fluid basic button" id="logoutBtn" style="margin-top: 10px;">
+                Logout
+            </button>
         </div>
-        <div class="ui segment" id="welcomeBox" style="display:none;">
-            <h3 id="welcomeText"></h3>
-            <p id="pointsText"></p>
-        </div>
+
     </div>
 </div>
 
 <script>
-document.getElementById('loginForm').addEventListener('submit', async function(e) {
+document.getElementById('loginForm').addEventListener('submit', async function (e) {
     e.preventDefault();
+
     const formData = new FormData(this);
     const data = Object.fromEntries(formData);
 
@@ -56,14 +109,18 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
         const result = await response.json();
 
         if (response.ok) {
-            document.getElementById('loginForm').style.display = 'none';
-            document.getElementById('welcomeBox').style.display = 'block';
-            document.getElementById('welcomeText').textContent = 'Welcome, ' + result.name + '!';
-            document.getElementById('pointsText').textContent =
-                'Wallet Points: ' + result.wallet_points + ' | Membership: ' + result.membership_level;
             localStorage.setItem('customer_id', result.customer_id);
+            localStorage.setItem('customer_name', result.name);
+
+            document.getElementById('loginForm').style.display = 'none';
+            document.getElementById('signupPrompt').style.display = 'none';
+            document.getElementById('welcomeBox').style.display = 'block';
+
+            document.getElementById('welcomeText').textContent = 'Welcome, ' + result.name + '!';
+            document.getElementById('pointsValue').textContent = result.wallet_points;
+            document.getElementById('membershipValue').textContent = result.membership_level;
         } else {
-            errorBox.textContent = result.error || 'Login failed';
+            errorBox.textContent = result.error || 'Login failed. Please check your credentials.';
             errorBox.style.display = 'block';
         }
     } catch (err) {
@@ -71,6 +128,42 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
         errorBox.style.display = 'block';
     }
 });
+
+document.getElementById('topUpBtn').addEventListener('click', async function () {
+    const customerId = localStorage.getItem('customer_id');
+    const topUpMessage = document.getElementById('topUpMessage');
+
+    try {
+        const response = await fetch(`/api/customers/${customerId}/add-points/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ points: 500 })
+        });
+        const result = await response.json();
+
+        if (response.ok) {
+            document.getElementById('pointsValue').textContent = result.new_balance;
+            topUpMessage.textContent = '500 points added successfully!';
+            topUpMessage.style.display = 'block';
+            setTimeout(() => { topUpMessage.style.display = 'none'; }, 3000);
+        } else {
+            topUpMessage.textContent = result.error || 'Failed to add points';
+            topUpMessage.className = 'ui error message';
+            topUpMessage.style.display = 'block';
+        }
+    } catch (err) {
+        topUpMessage.textContent = 'Something went wrong.';
+        topUpMessage.className = 'ui error message';
+        topUpMessage.style.display = 'block';
+    }
+});
+
+document.getElementById('logoutBtn').addEventListener('click', function () {
+    localStorage.removeItem('customer_id');
+    localStorage.removeItem('customer_name');
+    window.location.reload();
+});
 </script>
+
 </body>
 </html>

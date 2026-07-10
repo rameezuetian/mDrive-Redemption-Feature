@@ -1,78 +1,116 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>mDrive Wallet - Login</title>
+    <meta charset="UTF-8">
+    <title>mDrive Wallet - Sign Up</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/semantic-ui@2.5.0/dist/semantic.min.css">
+    <style>
+        body {
+            background-color: #f7f8fa;
+        }
+    </style>
 </head>
 <body>
+
 <div class="ui middle aligned center aligned grid" style="height: 100vh;">
     <div class="column" style="max-width: 450px;">
+
         <h2 class="ui teal image header">
-            <div class="content">mDrive Wallet Login</div>
+            <div class="content">
+                mDrive Wallet Sign Up
+            </div>
         </h2>
-        <form class="ui large form" id="loginForm">
+
+        <form class="ui large form" id="signupForm">
             <div class="ui stacked segment">
+
+                <div class="field">
+                    <div class="ui left icon input">
+                        <i class="user icon"></i>
+                        <input type="text" name="name" placeholder="Full Name" required>
+                    </div>
+                </div>
+
                 <div class="field">
                     <div class="ui left icon input">
                         <i class="mail icon"></i>
                         <input type="email" name="email" placeholder="E-mail address" required>
                     </div>
                 </div>
+
+                <div class="field">
+                    <div class="ui left icon input">
+                        <i class="phone icon"></i>
+                        <input type="text" name="phone" placeholder="Phone Number">
+                    </div>
+                </div>
+
                 <div class="field">
                     <div class="ui left icon input">
                         <i class="lock icon"></i>
                         <input type="password" name="password" placeholder="Password" required>
                     </div>
                 </div>
-                <button class="ui fluid large teal submit button" type="submit">Login</button>
+
+                <div class="field">
+                    <select class="ui fluid dropdown" name="membership_level">
+                        <option value="silver">Silver</option>
+                        <option value="silver_plus">Silver Plus</option>
+                        <option value="gold">Gold</option>
+                        <option value="platinum">Platinum</option>
+                    </select>
+                </div>
+
+                <button class="ui fluid large teal submit button" type="submit">
+                    Sign Up
+                </button>
             </div>
+
             <div class="ui error message" id="errorMessage"></div>
+            <div class="ui success message" id="successMessage"></div>
         </form>
+
         <div class="ui message">
-            New here? <a href="/signup/">Sign Up</a>
+            Already have an account? <a href="/login/">Log In</a>
         </div>
-        <div class="ui segment" id="welcomeBox" style="display:none;">
-            <h3 id="welcomeText"></h3>
-            <p id="pointsText"></p>
-        </div>
+
     </div>
 </div>
+
 <script>
-  document.getElementById('signupForm').addEventListener('submit' , async function(e){
+document.getElementById('signupForm').addEventListener('submit', async function (e) {
     e.preventDefault();
-    const formdata = new FormData(this);
-    const data = Object.fromEntries(formdata)
 
-    const errorBox = document.getElementById('errorMessage')
-    const successBox = document.getElementById('successMessage')
+    const formData = new FormData(this);
+    const data = Object.fromEntries(formData);
 
+    const errorBox = document.getElementById('errorMessage');
+    const successBox = document.getElementById('successMessage');
     errorBox.style.display = 'none';
     successBox.style.display = 'none';
 
     try {
-        const response = await fetch('/api/auth/signup/',{
-            method : 'POST',
-            headers : {'Content-Type': 'application/json' },
-            body : JSON.stringify(data)
+        const response = await fetch('/api/auth/signup/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
         });
         const result = await response.json();
 
-        if (response.ok){
-            successBox.textContent = 'Signup successful Redirecting to login ....';
+        if (response.ok) {
+            successBox.textContent = 'Signup successful! Redirecting to login...';
             successBox.style.display = 'block';
-            setTimeout(() => {
-                window.location.href = '/login/'
-                
-            },  1500);
-        }else{
-             errorBox.textContent = JSON.stringify(result);
+            setTimeout(() => { window.location.href = '/login/'; }, 1500);
+        } else {
+            errorBox.textContent = JSON.stringify(result);
             errorBox.style.display = 'block';
         }
-    }catch(err){
-             errorBox.textContent = 'Something went wrong. Please try again.';
+    } catch (err) {
+        errorBox.textContent = 'Something went wrong. Please try again.';
         errorBox.style.display = 'block';
     }
-  });
+});
 </script>
+
 </body>
 </html>

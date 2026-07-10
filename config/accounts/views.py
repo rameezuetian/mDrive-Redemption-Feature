@@ -5,6 +5,13 @@ from rest_framework import status
 from django.shortcuts import get_object_or_404
 from .models import Customer
 from .serializers import CustomerSerializer , SignUpSerializer ,LoginSerializer
+from django.shortcuts import render
+from rest_framework.authentication import SessionAuthentication
+
+
+class CsrfExemptSessionAuthentication(SessionAuthentication):
+    def enforce_csrf(self, request):
+        return  # skip CSRF check entirely
 
 
 class CustomerListCreateView(APIView):
@@ -46,6 +53,8 @@ class SignupView(APIView):
     """
     POST /api/auth/signup/
     """
+    authentication_classes = [CsrfExemptSessionAuthentication]
+    permission_classes = []
     def post(self , request):
         serializer = SignUpSerializer(data= request.data)
         if serializer.is_valid():
@@ -67,6 +76,8 @@ class LoginView(APIView):
     """
     POST /api/auth/login
     """
+    authentication_classes = [CsrfExemptSessionAuthentication]
+    permission_classes = []
     def  post(self , request):
         serializer = LoginSerializer(data = request.data)
         if not serializer.is_valid():
@@ -93,3 +104,40 @@ class LoginView(APIView):
             },
             status= status.HTTP_200_OK
         )
+        
+class AddWalletPointsView(APIView):
+    """
+    POST /api/customers/<id>/add-points/
+    Mock endpoint simulating IMS crediting wallet points after a purchase.
+    Body: { "points": 200 }
+    """
+    authentication_classes = [CsrfExemptSessionAuthentication]
+    permission_classes = []
+    def post(self, request, pk):
+        customer = get_object_or_404(Customer, pk=pk)
+        points = request.data.get('points')
+
+        if not points or not isinstance(points, (int, float)) or points <= 0:
+            return Response(
+                {"error": "A positive 'points' value is required"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        customer.wallet_points += int(points)
+        customer.save()
+
+        return Response(
+            {
+                "message": f"{points} points added successfully",
+                "customer_id": customer.id,
+                "new_balance": customer.wallet_points
+            },
+            status=status.HTTP_200_OK
+        )
+        
+        
+def signup_page(request):
+    return render(request , 'signup.html')
+
+def login_page(request):
+    return render(request , 'login.html')

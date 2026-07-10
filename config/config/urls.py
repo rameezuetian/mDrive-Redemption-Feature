@@ -18,6 +18,7 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
+from accounts.views import signup_page , login_page  , AddWalletPointsView
 
 
 urlpatterns = [
@@ -26,7 +27,9 @@ urlpatterns = [
     path('api/' , include('offers.urls')),
     path('api/' , include('accounts.urls')),
     path('api/' , include('redemption.urls')),
-    path('api/' , include('reports.urls'))
+    path('api/' , include('reports.urls')),
+    path('signup/' ,signup_page , name='signup-page'),
+    path('login/' , login_page , name='login-page'),
 ]
 
 urlpatterns +=static(settings.MEDIA_URL ,document_root =settings.MEDIA_ROOT)
