@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>mDrive Wallet - Outlet Scan</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/semantic-ui@2.5.0/dist/semantic.min.css">
+    <style>
+        body {
+            background-color: #f7f8fa;
+        }
+        .page-wrap {
+            max-width: 550px;
+            margin: 40px auto;
+            padding: 0 15px;
+        }
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .result-box {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="page-wrap">
+
+    <div class="page-header">
+        <h2 class="ui header">
+            <i class="qrcode icon"></i>
+            <div class="content">Outlet QR Scanner</div>
+        </h2>
+        <a href="/admin-summary/" class="ui basic button">Back to Reports</a>
+    </div>
+
+    <div class="ui segment">
+        <p style="color:#888;">
+            Enter or paste the customer's QR code below to validate the redemption,
+            generate the sale invoice, and deduct wallet points.
+        </p>
+
+        <form class="ui form" id="scanForm">
+            <div class="field">
+                <label>QR Code</label>
+                <input type="text" name="code" id="qrCodeInput" placeholder="Paste QR code here" required autofocus>
+            </div>
+            <button class="ui fluid large teal submit button" type="submit">
+                <i class="check icon"></i> Scan &amp; Confirm
+            </button>
+        </form>
+
+        <div class="ui error message" id="errorMessage" style="display:none;"></div>
+
+        <div class="result-box" id="resultBox" style="display:none;">
+            <div class="ui positive message">
+                <div class="header">Redemption Completed</div>
+                <table class="ui basic very compact table" style="margin-top:10px;">
+                    <tbody>
+                        <tr><td><strong>Status</strong></td><td id="resultStatus"></td></tr>
+                        <tr><td><strong>Invoice #</strong></td><td id="resultInvoice"></td></tr>
+                        <tr><td><strong>Points Used</strong></td><td id="resultPoints"></td></tr>
+                        <tr><td><strong>Redemption ID</strong></td><td id="resultId"></td></tr>
+                        <tr><td><strong>Completed At</strong></td><td id="resultTime"></td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+const token = localStorage.getItem('admin_token');
+
+if (!token) {
+    window.location.href = '/admin-login/';
+}
+
+document.getElementById('scanForm').addEventListener('submit', async function (e) {
+    e.preventDefault();
+
+    const code = document.getElementById('qrCodeInput').value.trim();
+    const errorBox = document.getElementById('errorMessage');
+    const resultBox = document.getElementById('resultBox');
+
+    errorBox.style.display = 'none';
+    resultBox.style.display = 'none';
+
+    try {
+        const response = await fetch('/api/redeem/scan/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Token ' + token
+            },
+            body: JSON.stringify({ code: code })
+        });
+
+        if (response.status === 401 || response.status === 403) {
+            localStorage.removeItem('admin_token');
+            window.location.href = '/admin-login/';
+            return;
+        }
+
+        const result = await response.json();
+
+        if (response.ok) {
+            document.getElementById('resultStatus').textContent = result.status;
+            document.getElementById('resultInvoice').textContent = result.invoice_number || '-';
+            document.getElementById('resultPoints').textContent = result.points_used;
+            document.getElementById('resultId').textContent = result.id;
+            document.getElementById('resultTime').textContent = new Date(result.updated_at).toLocaleString();
+            resultBox.style.display = 'block';
+            document.getElementById('scanForm').reset();
+        } else {
+            errorBox.textContent = result.error || 'Scan failed.';
+            errorBox.style.display = 'block';
+        }
+    } catch (err) {
+        errorBox.textContent = 'Something went wrong. Please try again.';
+        errorBox.style.display = 'block';
+    }
+});
+</script>
+
+</body>
+</html>

@@ -6,6 +6,8 @@ from django.shortcuts import get_object_or_404
 from .models import Customer
 from .serializers import CustomerSerializer , SignUpSerializer ,LoginSerializer
 from django.shortcuts import render
+from django.contrib.auth import authenticate
+from rest_framework.authtoken.models import Token
 from rest_framework.authentication import SessionAuthentication
 
 
@@ -136,6 +138,59 @@ class AddWalletPointsView(APIView):
         )
         
         
+
+
+class AdminLoginView(APIView):
+    """
+    POST /api/auth/admin-login/
+    Body: { "username": "admin", "password": "adminpass" }
+    """
+    authentication_classes = [CsrfExemptSessionAuthentication]
+    permission_classes = []
+
+    def post(self, request):
+        username = request.data.get('username')
+        password = request.data.get('password')
+
+        if not username or not password:
+            return Response(
+                {"error": "Username and password are required"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        user = authenticate(username=username, password=password)
+
+        if user is None:
+            return Response(
+                {"error": "Invalid username or password"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if not user.is_staff:
+            return Response(
+                {"error": "This account does not have admin access"},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        token, created = Token.objects.get_or_create(user=user)
+
+        return Response(
+            {
+                "message": "Admin login successful",
+                "token": token.key,
+                "username": user.username
+            },
+            status=status.HTTP_200_OK
+        )   
+        
+        
+def admin_login_page(request):
+    return render(request, 'admin_login.html')
+
+def admin_summary_page(request):
+    return render(request, 'admin_summary.html')
+        
+        
 def signup_page(request):
     return render(request , 'signup.html')
 
@@ -154,3 +209,6 @@ def offers_pages(request):
 
 def history_page(request):
     return render(request , 'history.html')
+
+def outlet_scan_page(request):
+    return render(request, 'outlet_scan.html')

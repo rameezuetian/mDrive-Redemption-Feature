@@ -18,7 +18,17 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
-from accounts.views import signup_page , login_page  , AddWalletPointsView , product_page , qr_page , offers_pages
+from accounts.views import (
+    signup_page , 
+    login_page  ,
+     product_page ,
+     qr_page , 
+     offers_pages ,
+     history_page,
+     admin_login_page,
+     admin_summary_page,
+     outlet_scan_page
+)
 
 
 urlpatterns = [
@@ -32,7 +42,11 @@ urlpatterns = [
     path('login/' , login_page , name='login-page'),
     path('products/' , product_page , name='product-page'),
     path('qr/' , qr_page , name='qr-page'),
-    path('offers/', offers_pages , name='offers-page')
+    path('offers/', offers_pages , name='offers-page'),
+    path('history/' , history_page , name='history-page'),
+    path('admin-login' , admin_login_page , name='admin-login-page'),
+    path('admin-summary' , admin_summary_page , name='admin-summary-page'),
+    path('outlet-scan' , outlet_scan_page , name='outlet-scan-page')
     
 ]
 

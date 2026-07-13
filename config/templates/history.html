@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>mDrive Wallet - My History</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/semantic-ui@2.5.0/dist/semantic.min.css">
+    <style>
+        body {
+            background-color: #f7f8fa;
+        }
+        .page-wrap {
+            max-width: 900px;
+            margin: 30px auto;
+            padding: 0 15px;
+        }
+        .points-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .status-label {
+            text-transform: capitalize;
+        }
+    </style>
+</head>
+<body>
+
+<div class="page-wrap">
+
+    <div class="points-bar">
+        <h2 class="ui header">My Redemption History</h2>
+        <div class="ui teal label">
+            Wallet Points: <span id="pointsBadge">-</span>
+        </div>
+    </div>
+
+    <div class="ui secondary menu">
+        <a class="item" href="/products/">Products</a>
+        <a class="item" href="/offers/">Offers</a>
+        <a class="item active" href="/history/">My History</a>
+        <a class="item" href="/login/">Logout</a>
+    </div>
+
+    <div class="ui warning message" id="emptyMessage" style="display:none;">
+        You haven't redeemed anything yet. Browse
+        <a href="/products/">Products</a> or <a href="/offers/">Offers</a> to get started.
+    </div>
+
+    <table class="ui celled striped table" id="historyTable" style="display:none;">
+        <thead>
+        <tr>
+            <th>Type</th>
+            <th>Item</th>
+            <th>Points Used</th>
+            <th>Status</th>
+            <th>Invoice #</th>
+            <th>Date</th>
+        </tr>
+        </thead>
+        <tbody id="historyBody">
+        </tbody>
+    </table>
+
+</div>
+
+<script>
+const customerId = localStorage.getItem('customer_id');
+
+if (!customerId) {
+    window.location.href = '/login/';
+}
+
+function formatDate(dateStr) {
+    const d = new Date(dateStr);
+    return d.toLocaleString('en-GB', {
+        day: 'numeric', month: 'short', year: 'numeric',
+        hour: '2-digit', minute: '2-digit'
+    });
+}
+
+function statusColor(status) {
+    const map = {
+        'completed': 'green',
+        'scanned': 'blue',
+        'invoice_created': 'blue',
+        'generated': 'grey',
+        'cancelled': 'red',
+        'expired': 'red'
+    };
+    return map[status] || 'grey';
+}
+
+async function loadCustomer() {
+    const res = await fetch(`/api/customers/${customerId}/`);
+    const data = await res.json();
+    document.getElementById('pointsBadge').textContent = data.wallet_points;
+}
+
+async function loadHistory() {
+    const res = await fetch(`/api/redeem/history/${customerId}/`);
+    const records = await res.json();
+
+    const tbody = document.getElementById('historyBody');
+    const table = document.getElementById('historyTable');
+    const emptyMsg = document.getElementById('emptyMessage');
+
+    if (!records || records.length === 0) {
+        emptyMsg.style.display = 'block';
+        table.style.display = 'none';
+        return;
+    }
+
+    table.style.display = 'table';
+    tbody.innerHTML = '';
+
+    records.forEach(r => {
+        const type = r.product ? 'Product' : 'Offer';
+        const itemName = r.product_name || r.offer_name || `#${r.product || r.offer || '-'}`;
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${type}</td>
+            <td>${itemName}</td>
+            <td>${r.points_used}</td>
+            <td><span class="ui ${statusColor(r.status)} label status-label">${r.status.replace('_', ' ')}</span></td>
+            <td>${r.invoice_number || '-'}</td>
+            <td>${formatDate(r.created_at)}</td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
+loadCustomer();
+loadHistory();
+</script>
+
+</body>
+</html>

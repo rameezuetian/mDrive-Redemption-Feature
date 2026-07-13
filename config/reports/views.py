@@ -3,7 +3,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from django.db.models import Sum , Count
 from redemption.models import RedemptionRecord 
-from core.permissions import isAdminUser
+from core.permissions import IsAdminUser
 from rest_framework.authentication import TokenAuthentication
 # Create your views here.
 
@@ -13,7 +13,7 @@ class ReportSummaryView(APIView):
     GET /api/reports/summary/
     """
     authentication_classes = [TokenAuthentication]
-    permission_classes = [isAdminUser]
+    permission_classes = [IsAdminUser]
     def get(self , request):
         total_product_redemptions = RedemptionRecord.objects.filter(
             product__isnull = False , status = "completed"
@@ -38,7 +38,7 @@ class ReportSummaryView(APIView):
 
 class RedemptionByCustomerView(APIView):
     authentication_classes = [TokenAuthentication]
-    permission_classes = [isAdminUser]
+    permission_classes = [IsAdminUser]
     """
     GET /api/reports/by-customer/
     """

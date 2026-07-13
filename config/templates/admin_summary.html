@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>mDrive Wallet - Admin Summary</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/semantic-ui@2.5.0/dist/semantic.min.css">
+    <style>
+        body {
+            background-color: #f7f8fa;
+        }
+        .page-wrap {
+            max-width: 900px;
+            margin: 30px auto;
+            padding: 0 15px;
+        }
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="page-wrap">
+
+    <div class="page-header">
+        <h2 class="ui header">
+            <i class="chart bar icon"></i>
+            <div class="content">Admin Reports Summary</div>
+        </h2>
+        <a href="/outlet-scan/" class="ui basic button">Scan QR</a>
+        <button class="ui basic button" id="logoutBtn">Logout</button>
+    </div>
+
+    <div class="ui error message" id="errorMessage" style="display:none;"></div>
+
+    <div class="ui four statistics" id="statsContainer" style="display:none;">
+        <div class="statistic">
+            <div class="value" id="totalRedemptions">0</div>
+            <div class="label">Total Redemptions</div>
+        </div>
+        <div class="statistic">
+            <div class="value" id="totalProductRedemptions">0</div>
+            <div class="label">Product Redemptions</div>
+        </div>
+        <div class="statistic">
+            <div class="value" id="totalOfferRedemptions">0</div>
+            <div class="label">Offer Redemptions</div>
+        </div>
+        <div class="statistic">
+            <div class="value" id="totalPointsUsed">0</div>
+            <div class="label">Wallet Points Used</div>
+        </div>
+    </div>
+
+    <div class="ui divider"></div>
+
+    <h3 class="ui header">Redemptions By Customer</h3>
+
+    <table class="ui celled striped table" id="customerTable" style="display:none;">
+        <thead>
+        <tr>
+            <th>Customer</th>
+            <th>Total Redemptions</th>
+        </tr>
+        </thead>
+        <tbody id="customerTableBody"></tbody>
+    </table>
+
+    <div class="ui warning message" id="emptyCustomerMessage" style="display:none;">
+        No completed redemptions yet.
+    </div>
+
+</div>
+
+<script>
+const token = localStorage.getItem('admin_token');
+
+if (!token) {
+    window.location.href = '/admin-login/';
+}
+
+const authHeaders = {
+    'Content-Type': 'application/json',
+    'Authorization': 'Token ' + token
+};
+
+async function loadSummary() {
+    const errorBox = document.getElementById('errorMessage');
+
+    try {
+        const response = await fetch('/api/reports/summary/', { headers: authHeaders });
+
+        if (response.status === 401 || response.status === 403) {
+            localStorage.removeItem('admin_token');
+            window.location.href = '/admin-login/';
+            return;
+        }
+
+        const data = await response.json();
+
+        document.getElementById('statsContainer').style.display = 'flex';
+        document.getElementById('totalRedemptions').textContent = data.total_redemptions;
+        document.getElementById('totalProductRedemptions').textContent = data.total_product_redemptions;
+        document.getElementById('totalOfferRedemptions').textContent = data.total_offer_redemptions;
+        document.getElementById('totalPointsUsed').textContent = data.total_wallet_points_used;
+    } catch (err) {
+        errorBox.textContent = 'Failed to load summary data.';
+        errorBox.style.display = 'block';
+    }
+}
+
+async function loadByCustomer() {
+    const table = document.getElementById('customerTable');
+    const tbody = document.getElementById('customerTableBody');
+    const emptyMsg = document.getElementById('emptyCustomerMessage');
+
+    try {
+        const response = await fetch('/api/reports/by-customer/', { headers: authHeaders });
+        const data = await response.json();
+
+        if (!data || data.length === 0) {
+            emptyMsg.style.display = 'block';
+            table.style.display = 'none';
+            return;
+        }
+
+        table.style.display = 'table';
+        tbody.innerHTML = '';
+
+        data.forEach(row => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${row.customer__name}</td>
+                <td>${row.total_redemptions}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    } catch (err) {
+        emptyMsg.textContent = 'Failed to load customer breakdown.';
+        emptyMsg.style.display = 'block';
+    }
+}
+
+document.getElementById('logoutBtn').addEventListener('click', function () {
+    localStorage.removeItem('admin_token');
+    localStorage.removeItem('admin_username');
+    window.location.href = '/admin-login/';
+});
+
+loadSummary();
+loadByCustomer();
+</script>
+
+</body>
+</html>

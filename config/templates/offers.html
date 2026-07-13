@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <title>mDrive Wallet - Offers</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/semantic-ui@2.5.0/dist/semantic.min.css">
+   <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
     <style>
         body {
             background-color: #f7f8fa;
@@ -39,6 +40,20 @@
         <a class="item" href="/login/">Logout</a>
     </div>
 
+    <div class="ui info message" id="activeQrBanner" style="display:none;">
+        <i class="qrcode icon"></i>
+        You have an active QR code waiting to be scanned.
+        <button class="ui mini teal button" id="showQrBtn" style="margin-left: 8px;">Show QR</button>
+        (expires in <span id="activeQrCountdown">--:--</span>)
+
+        <div id="inlineQrBox" style="display:none; margin-top: 15px; text-align: center;">
+            <canvas id="inlineQrCanvas"></canvas>
+            <p style="margin-top: 8px; font-size: 13px; color:#555;">
+                Code: <span id="inlineQrCode"></span>
+            </p>
+        </div>
+    </div>
+
     <div class="ui error message" id="errorMessage" style="display:none;"></div>
 
     <div class="ui three stackable cards" id="offersContainer">
@@ -58,6 +73,72 @@ async function loadCustomer() {
     const res = await fetch(`/api/customers/${customerId}/`);
     const data = await res.json();
     document.getElementById('pointsBadge').textContent = data.wallet_points;
+}
+
+function checkActiveQr() {
+    const code = localStorage.getItem('last_qr_code');
+    const expiry = localStorage.getItem('last_qr_expiry');
+
+    if (!code || !expiry) return;
+
+    const expiryTime = new Date(expiry).getTime();
+    const now = new Date().getTime();
+    const remainingMs = expiryTime - now;
+
+    if (remainingMs <= 0) {
+        localStorage.removeItem('last_qr_code');
+        localStorage.removeItem('last_qr_expiry');
+        localStorage.removeItem('last_redemption_type');
+        return;
+    }
+
+    const banner = document.getElementById('activeQrBanner');
+    const countdownEl = document.getElementById('activeQrCountdown');
+    banner.style.display = 'block';
+
+    const showQrBtn = document.getElementById('showQrBtn');
+    const inlineQrBox = document.getElementById('inlineQrBox');
+    let qrRendered = false;
+
+    showQrBtn.addEventListener('click', function () {
+        const isVisible = inlineQrBox.style.display === 'block';
+
+        if (isVisible) {
+            inlineQrBox.style.display = 'none';
+            showQrBtn.textContent = 'Show QR';
+            return;
+        }
+
+        if (!qrRendered) {
+            QRCode.toCanvas(document.getElementById('inlineQrCanvas'), code, { width: 180 }, function (error) {
+                if (error) console.error(error);
+            });
+            document.getElementById('inlineQrCode').textContent = code;
+            qrRendered = true;
+        }
+
+        inlineQrBox.style.display = 'block';
+        showQrBtn.textContent = 'Hide QR';
+    });
+
+    function tick() {
+        const remaining = expiryTime - new Date().getTime();
+        if (remaining <= 0) {
+            banner.style.display = 'none';
+            clearInterval(tickInterval);
+            localStorage.removeItem('last_qr_code');
+            localStorage.removeItem('last_qr_expiry');
+            localStorage.removeItem('last_redemption_type');
+            return;
+        }
+        const totalSeconds = Math.floor(remaining / 1000);
+        const minutes = Math.floor(totalSeconds / 60);
+        const seconds = totalSeconds % 60;
+        countdownEl.textContent = String(minutes).padStart(2, '0') + ':' + String(seconds).padStart(2, '0');
+    }
+
+    tick();
+    const tickInterval = setInterval(tick, 1000);
 }
 
 function formatDate(dateStr) {
@@ -135,6 +216,7 @@ document.getElementById('offersContainer').addEventListener('click', async funct
 
 loadCustomer();
 loadOffers();
+checkActiveQr();
 </script>
 
 </body>
