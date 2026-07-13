@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>mDrive Wallet - Your QR Code</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/semantic-ui@2.5.0/dist/semantic.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+    <style>
+        body {
+            background-color: #f7f8fa;
+        }
+    </style>
+</head>
+<body>
+
+<div class="ui middle aligned center aligned grid" style="height: 100vh;">
+    <div class="column" style="max-width: 450px;">
+
+        <div class="ui segment">
+            <h2 class="ui header">Show This At The Outlet</h2>
+            <p id="redemptionType" style="color:#888;"></p>
+
+            <canvas id="qrCanvas" style="margin: 20px auto; display:block;"></canvas>
+
+            <div class="ui divider"></div>
+
+            <p><strong>Code:</strong> <span id="codeText"></span></p>
+            <p><strong>Expires:</strong> <span id="expiryText"></span></p>
+
+            <div class="ui warning message" id="noQrMessage" style="display:none;">
+                No active QR code found. Please redeem a product or offer first.
+            </div>
+
+            <a href="/products/" class="ui fluid teal button" style="margin-top:15px;">
+                Back to Products
+            </a>
+            <a href="/offers/" class="ui fluid basic button" style="margin-top:10px;">
+                Back to Offers
+            </a>
+        </div>
+
+    </div>
+</div>
+
+<script>
+const code = localStorage.getItem('last_qr_code');
+const expiry = localStorage.getItem('last_qr_expiry');
+const type = localStorage.getItem('last_redemption_type');
+
+if (!code) {
+    document.getElementById('noQrMessage').style.display = 'block';
+    document.getElementById('qrCanvas').style.display = 'none';
+} else {
+    document.getElementById('redemptionType').textContent = type + ' Redemption';
+    document.getElementById('codeText').textContent = code;
+    document.getElementById('expiryText').textContent = new Date(expiry).toLocaleString();
+
+    QRCode.toCanvas(document.getElementById('qrCanvas'), code, { width: 220 }, function (error) {
+        if (error) console.error(error);
+    });
+}
+</script>
+
+</body>
+</html>

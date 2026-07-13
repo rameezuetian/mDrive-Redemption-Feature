@@ -141,3 +141,16 @@ def signup_page(request):
 
 def login_page(request):
     return render(request , 'login.html')
+
+def product_page(request):
+    return render(request , 'products.html')
+
+def qr_page(request):
+    return render(request , 'qr.html')
+
+def offers_pages(request):
+    return render(request , 'offers.html')
+
+
+def history_page(request):
+    return render(request , 'history.html')

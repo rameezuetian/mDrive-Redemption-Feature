@@ -6,6 +6,7 @@ from accounts.models import Customer
 from products.models import Product
 from offers.models import Offer
 from .models import RedemptionRecord
+from core.authentication import CsrfExemptSessionAuthentication
 from .serializers import RedemptionRecordSerializer
 from .services import (
     mock_wallet_check,
@@ -24,7 +25,8 @@ class RedeemProductView(APIView):
     POST /api/redeem/product/
     Body: { "customer_id": 1, "product_id": 2 }
     """
-
+    authentication_classes = [CsrfExemptSessionAuthentication]
+    permission_classes = []
     def post(self, request):
         customer_id = request.data.get('customer_id')
         product_id = request.data.get('product_id')
@@ -62,7 +64,8 @@ class RedeemOfferView(APIView):
     POST /api/redeem/offer/
     Body: { "customer_id": 1, "offer_id": 2 }
     """
-
+    authentication_classes = [CsrfExemptSessionAuthentication]
+    permission_classes = []
     def post(self, request):
         customer_id = request.data.get('customer_id')
         offer_id = request.data.get('offer_id')
@@ -104,7 +107,8 @@ class ScanQRView(APIView):
     POST /api/redeem/scan/
     Body: { "code": "the-qr-code-uuid" }
     """
-
+    authentication_classes = [CsrfExemptSessionAuthentication]
+    permission_classes = []
     def post(self, request):
         code = request.data.get('code')
 
@@ -142,7 +146,7 @@ class ScanQRView(APIView):
         serializer = RedemptionRecordSerializer(redemption)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
-    
+     
     
 class RedemptionHistoryView(APIView):
     def get(self , request , customer_id):

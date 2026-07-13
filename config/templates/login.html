@@ -52,40 +52,50 @@
 </div>
 
         <!-- DASHBOARD (shown after successful login) -->
-        <div class="ui segment dashboard-card" id="welcomeBox" style="display:none;">
-            <h3 class="ui header" id="welcomeText"></h3>
+       <div class="ui segment dashboard-card" id="welcomeBox" style="display:none;">
+    <h3 class="ui header" id="welcomeText"></h3>
 
-            <div class="ui two column grid">
-                <div class="column">
-                    <div class="ui teal statistic">
-                        <div class="value" id="pointsValue">0</div>
-                        <div class="label">Wallet Points</div>
-                    </div>
-                </div>
-                <div class="column">
-                    <div class="ui olive statistic">
-                        <div class="value" id="membershipValue">-</div>
-                        <div class="label">Membership</div>
-                    </div>
-                </div>
+    <div class="ui two column grid">
+        <div class="column">
+            <div class="ui teal statistic">
+                <div class="value" id="pointsValue">0</div>
+                <div class="label">Wallet Points</div>
             </div>
-
-            <div class="ui divider"></div>
-
-            <p style="color:#888; font-size: 13px;">
-                Demo purposes only — simulates IMS crediting wallet points after a real purchase.
-            </p>
-
-            <button class="ui fluid teal button" id="topUpBtn">
-                Add 500 Points (Demo Top-Up)
-            </button>
-
-            <div class="ui success message" id="topUpMessage" style="display:none; margin-top: 10px;"></div>
-
-            <button class="ui fluid basic button" id="logoutBtn" style="margin-top: 10px;">
-                Logout
-            </button>
         </div>
+        <div class="column">
+            <div class="ui olive statistic">
+                <div class="value" id="membershipValue">-</div>
+                <div class="label">Membership</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="ui divider"></div>
+
+    <!-- NEW: Navigation buttons -->
+    <a href="/products/" class="ui fluid teal button" style="margin-bottom: 10px;">
+        Browse Products
+    </a>
+    <a href="/offers/" class="ui fluid olive button" style="margin-bottom: 10px;">
+        Browse Offers
+    </a>
+
+    <div class="ui divider"></div>
+
+    <p style="color:#888; font-size: 13px;">
+        Demo purposes only — simulates IMS crediting wallet points after a real purchase.
+    </p>
+
+    <button class="ui fluid teal button" id="topUpBtn">
+        Add 500 Points (Demo Top-Up)
+    </button>
+
+    <div class="ui success message" id="topUpMessage" style="display:none; margin-top: 10px;"></div>
+
+    <button class="ui fluid basic button" id="logoutBtn" style="margin-top: 10px;">
+        Logout
+    </button>
+</div>
 
     </div>
 </div>

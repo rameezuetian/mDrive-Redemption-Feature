@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>mDrive Wallet - Offers</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/semantic-ui@2.5.0/dist/semantic.min.css">
+    <style>
+        body {
+            background-color: #f7f8fa;
+        }
+        .page-wrap {
+            max-width: 1000px;
+            margin: 30px auto;
+            padding: 0 15px;
+        }
+        .points-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="page-wrap">
+
+    <div class="points-bar">
+        <h2 class="ui header">Promotional Offers</h2>
+        <div class="ui teal label">
+            Wallet Points: <span id="pointsBadge">-</span>
+        </div>
+    </div>
+
+    <div class="ui secondary menu">
+        <a class="item" href="/products/">Products</a>
+        <a class="item active" href="/offers/">Offers</a>
+        <a class="item" href="/history/">My History</a>
+        <a class="item" href="/login/">Logout</a>
+    </div>
+
+    <div class="ui error message" id="errorMessage" style="display:none;"></div>
+
+    <div class="ui three stackable cards" id="offersContainer">
+        <!-- Offer cards injected here -->
+    </div>
+
+</div>
+
+<script>
+const customerId = localStorage.getItem('customer_id');
+
+if (!customerId) {
+    window.location.href = '/login/';
+}
+
+async function loadCustomer() {
+    const res = await fetch(`/api/customers/${customerId}/`);
+    const data = await res.json();
+    document.getElementById('pointsBadge').textContent = data.wallet_points;
+}
+
+function formatDate(dateStr) {
+    const d = new Date(dateStr);
+    return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+async function loadOffers() {
+    const res = await fetch('/api/offers/');
+    const offers = await res.json();
+    const container = document.getElementById('offersContainer');
+    container.innerHTML = '';
+
+    offers
+        .filter(o => o.status === 'active')
+        .forEach(offer => {
+            const card = document.createElement('div');
+            card.className = 'ui card';
+            card.innerHTML = `
+                <div class="content">
+                    <div class="header">${offer.title}</div>
+                    <div class="meta">${offer.category || ''}</div>
+                    <div class="description">${offer.description || ''}</div>
+                </div>
+                <div class="content">
+                    <span class="ui olive label">${offer.membership_eligibility || 'All tiers'}</span>
+                    <span class="ui basic label">Limit: ${offer.redemption_limit}</span>
+                </div>
+                <div class="content">
+                    <small style="color:#888;">
+                        Valid: ${formatDate(offer.start_date)} - ${formatDate(offer.end_date)}
+                    </small>
+                </div>
+                <div class="ui bottom attached button redeemBtn" data-id="${offer.id}">
+                    Redeem
+                </div>
+            `;
+            container.appendChild(card);
+        });
+}
+
+document.getElementById('offersContainer').addEventListener('click', async function (e) {
+    if (!e.target.classList.contains('redeemBtn')) return;
+
+    const offerId = e.target.getAttribute('data-id');
+    const errorBox = document.getElementById('errorMessage');
+    errorBox.style.display = 'none';
+
+    try {
+        const response = await fetch('/api/redeem/offer/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                customer_id: customerId,
+                offer_id: offerId
+            })
+        });
+        const result = await response.json();
+
+        if (response.ok) {
+            localStorage.setItem('last_qr_code', result.qr_code.code);
+            localStorage.setItem('last_qr_expiry', result.qr_code.expires_at);
+            localStorage.setItem('last_redemption_type', 'Offer');
+            window.location.href = '/qr/';
+        } else {
+            errorBox.textContent = result.error || 'Redemption failed.';
+            errorBox.style.display = 'block';
+            window.scrollTo(0, 0);
+        }
+    } catch (err) {
+        errorBox.textContent = 'Something went wrong. Please try again.';
+        errorBox.style.display = 'block';
+    }
+});
+
+loadCustomer();
+loadOffers();
+</script>
+
+</body>
+</html>
