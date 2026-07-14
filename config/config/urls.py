@@ -27,7 +27,9 @@ from accounts.views import (
      history_page,
      admin_login_page,
      admin_summary_page,
-     outlet_scan_page
+     outlet_scan_page,
+     manage_offers_page,
+     manage_products_page
 )
 
 
@@ -46,7 +48,9 @@ urlpatterns = [
     path('history/' , history_page , name='history-page'),
     path('admin-login' , admin_login_page , name='admin-login-page'),
     path('admin-summary' , admin_summary_page , name='admin-summary-page'),
-    path('outlet-scan' , outlet_scan_page , name='outlet-scan-page')
+    path('outlet-scan' , outlet_scan_page , name='outlet-scan-page'),
+    path('manage-products/' , manage_products_page , name='manage-products-page'),
+    path('manage-offers/' ,manage_offers_page , name='manage-offers-page')
     
 ]
 

@@ -6,7 +6,7 @@ from accounts.models import Customer
 from products.models import Product
 from offers.models import Offer
 from .models import RedemptionRecord
-from core.permissions import IsAdminUser
+from core.permissions import IsSuperAdminUser
 from rest_framework.authentication import TokenAuthentication
 from core.authentication import CsrfExemptSessionAuthentication
 from .serializers import RedemptionRecordSerializer
@@ -110,7 +110,7 @@ class ScanQRView(APIView):
     Body: { "code": "the-qr-code-uuid" }
     """
     authentication_classes = [TokenAuthentication, CsrfExemptSessionAuthentication]
-    permission_classes = [IsAdminUser]
+    permission_classes = [IsSuperAdminUser]
     def post(self, request):
         code = request.data.get('code')
 

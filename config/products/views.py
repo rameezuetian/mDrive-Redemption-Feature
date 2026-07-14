@@ -4,10 +4,22 @@ from rest_framework.response import Response
 from rest_framework import status
 from .models import Product
 from .serializers import ProductSerializer
+from rest_framework.authentication import TokenAuthentication
+from core.authentication import CsrfExemptSessionAuthentication
+from core.permissions import IsStaffOrAdmin
 # Create your views here.
 
 
 class ProductListCreateView(APIView):
+    def get_permissions(self):
+        if self.request.method  == "POST":
+            return [IsStaffOrAdmin()]
+        return []
+    
+    def get_authenticators(self):
+        return [TokenAuthentication(), CsrfExemptSessionAuthentication()]
+    
+    
     def get(self , requset):
         products =  Product.objects.all()
         serializer = ProductSerializer(products , many=True)
@@ -22,6 +34,18 @@ class ProductListCreateView(APIView):
     
     
 class ProductDetailView(APIView):
+    
+    def get_permissions(self):
+        if self.request.method  in ['PUT' , 'DELETE']:
+            return [IsStaffOrAdmin()]
+        return []
+    
+    
+    def get_authenticators(self):
+        return [TokenAuthentication() , CsrfExemptSessionAuthentication()]
+
+    
+    
     def get(self , request , pk):
         product = get_object_or_404(Product , pk=pk)
         serializer = ProductSerializer(product)

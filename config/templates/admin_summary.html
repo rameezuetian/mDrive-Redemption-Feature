@@ -30,8 +30,19 @@
             <i class="chart bar icon"></i>
             <div class="content">Admin Reports Summary</div>
         </h2>
-        <a href="/outlet-scan/" class="ui basic button">Scan QR</a>
-        <button class="ui basic button" id="logoutBtn">Logout</button>
+        <div>
+            <span id="roleLabel" class="ui label" style="margin-right:10px;"></span>
+            <button class="ui basic button" id="logoutBtn">Logout</button>
+        </div>
+    </div>
+
+    <div class="ui secondary menu">
+        <a class="item" href="/manage-products/">Products</a>
+        <a class="item" href="/manage-offers/">Offers</a>
+        <span class="item" id="reportsLink" style="display:none;">
+            <a class="active" href="/admin-summary/">Reports</a>
+        </span>
+        <a class="item" href="/outlet-scan/">Outlet Scan</a>
     </div>
 
     <div class="ui error message" id="errorMessage" style="display:none;"></div>
@@ -77,10 +88,19 @@
 
 <script>
 const token = localStorage.getItem('admin_token');
+const isSuperuser = localStorage.getItem('is_superuser') === 'true';
 
 if (!token) {
     window.location.href = '/admin-login/';
 }
+
+if (!isSuperuser) {
+    // Staff accounts don't have report access — send them to product management instead
+    window.location.href = '/manage-products/';
+}
+
+document.getElementById('roleLabel').textContent = 'Super Admin';
+document.getElementById('reportsLink').style.display = 'inline-block';
 
 const authHeaders = {
     'Content-Type': 'application/json',

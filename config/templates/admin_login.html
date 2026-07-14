@@ -69,7 +69,14 @@ document.getElementById('adminLoginForm').addEventListener('submit', async funct
         if (response.ok) {
             localStorage.setItem('admin_token', result.token);
             localStorage.setItem('admin_username', result.username);
-            window.location.href = '/admin-summary';
+            localStorage.setItem('is_superuser' , result.is_superuser);
+
+            if(result.is_superuser){
+            window.location.href = '/admin-summary/';
+            }else{
+                window.location.href ='/manage-products/'
+            }
+
         } else {
             errorBox.textContent = result.error || 'Login failed.';
             errorBox.style.display = 'block';

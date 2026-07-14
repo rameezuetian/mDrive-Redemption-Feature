@@ -178,7 +178,7 @@ class AdminLoginView(APIView):
             {
                 "message": "Admin login successful",
                 "token": token.key,
-                "username": user.username
+                "is_superuser": user.is_superuser
             },
             status=status.HTTP_200_OK
         )   
@@ -212,3 +212,9 @@ def history_page(request):
 
 def outlet_scan_page(request):
     return render(request, 'outlet_scan.html')
+
+def manage_products_page(request):
+    return render(request , 'manage_products.html')
+
+def manage_offers_page(request):
+    return render(request , 'manage_offers.html')

@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>mDrive Wallet - Manage Products</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/semantic-ui@2.5.0/dist/semantic.min.css">
+    <style>
+        body { background-color: #f7f8fa; }
+        .page-wrap { max-width: 1000px; margin: 30px auto; padding: 0 15px; }
+        .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+
+<div class="page-wrap">
+
+    <div class="page-header">
+        <h2 class="ui header">
+            <i class="box icon"></i>
+            <div class="content">Manage Products</div>
+        </h2>
+        <div>
+            <span id="roleLabel" class="ui label" style="margin-right:10px;"></span>
+            <button class="ui basic button" id="logoutBtn">Logout</button>
+        </div>
+    </div>
+
+    <div class="ui secondary menu">
+        <a class="item active" href="/manage-products/">Products</a>
+        <a class="item" href="/manage-offers/">Offers</a>
+        <span class="item" id="reportsLink" style="display:none;">
+            <a href="/admin-summary/">Reports</a>
+        </span>
+        <span class="item" id="scanLink" style="display:none;">
+            <a href="/outlet-scan/">Outlet Scan</a>
+        </span>
+    </div>
+
+    <div class="ui error message" id="errorMessage" style="display:none;"></div>
+    <div class="ui success message" id="successMessage" style="display:none;"></div>
+
+    <button class="ui teal button" id="newProductBtn" style="margin-bottom: 15px;">
+        <i class="plus icon"></i> Add New Product
+    </button>
+
+    <!-- Add/Edit Form -->
+    <div class="ui segment" id="productFormSegment" style="display:none;">
+        <h3 class="ui header" id="formTitle">Add Product</h3>
+        <form class="ui form" id="productForm">
+            <input type="hidden" id="productId">
+            <div class="two fields">
+                <div class="field">
+                    <label>Name</label>
+                    <input type="text" id="name" required>
+                </div>
+                <div class="field">
+                    <label>Category</label>
+                    <input type="text" id="category">
+                </div>
+            </div>
+            <div class="field">
+                <label>Description</label>
+                <textarea id="description" rows="2"></textarea>
+            </div>
+            <div class="three fields">
+                <div class="field">
+                    <label>Points Required</label>
+                    <input type="number" id="points_required" min="0" required>
+                </div>
+                <div class="field">
+                    <label>Available Quantity</label>
+                    <input type="number" id="available_quantity" min="0" required>
+                </div>
+                <div class="field">
+                    <label>Status</label>
+                    <select class="ui dropdown" id="status">
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                    </select>
+                </div>
+            </div>
+            <div class="field">
+                <label>Terms and Conditions</label>
+                <textarea id="terms_and_conditions" rows="2"></textarea>
+            </div>
+
+            <button class="ui teal button" type="submit">Save</button>
+            <button class="ui basic button" type="button" id="cancelFormBtn">Cancel</button>
+        </form>
+    </div>
+
+    <table class="ui celled striped table">
+        <thead>
+        <tr>
+            <th>Name</th>
+            <th>Category</th>
+            <th>Points</th>
+            <th>Qty</th>
+            <th>Status</th>
+            <th>Actions</th>
+        </tr>
+        </thead>
+        <tbody id="productsBody"></tbody>
+    </table>
+
+</div>
+
+<script>
+const token = localStorage.getItem('admin_token');
+const isSuperuser = localStorage.getItem('is_superuser') === 'true';
+
+if (!token) {
+    window.location.href = '/admin-login/';
+}
+
+document.getElementById('roleLabel').textContent = isSuperuser ? 'Super Admin' : 'Staff';
+if (isSuperuser) {
+    document.getElementById('reportsLink').style.display = 'inline-block';
+}
+document.getElementById('scanLink').style.display = 'inline-block';
+
+const authHeaders = {
+    'Content-Type': 'application/json',
+    'Authorization': 'Token ' + token
+};
+
+const errorBox = document.getElementById('errorMessage');
+const successBox = document.getElementById('successMessage');
+const formSegment = document.getElementById('productFormSegment');
+const form = document.getElementById('productForm');
+
+function showError(msg) {
+    errorBox.textContent = msg;
+    errorBox.style.display = 'block';
+    successBox.style.display = 'none';
+}
+
+function showSuccess(msg) {
+    successBox.textContent = msg;
+    successBox.style.display = 'block';
+    errorBox.style.display = 'none';
+    setTimeout(() => { successBox.style.display = 'none'; }, 2500);
+}
+
+function resetForm() {
+    form.reset();
+    document.getElementById('productId').value = '';
+    document.getElementById('formTitle').textContent = 'Add Product';
+}
+
+document.getElementById('newProductBtn').addEventListener('click', function () {
+    resetForm();
+    formSegment.style.display = 'block';
+});
+
+document.getElementById('cancelFormBtn').addEventListener('click', function () {
+    formSegment.style.display = 'none';
+    resetForm();
+});
+
+async function loadProducts() {
+    const res = await fetch('/api/products/');
+
+    if (res.status === 401 || res.status === 403) {
+        window.location.href = '/admin-login/';
+        return;
+    }
+
+    const products = await res.json();
+    const tbody = document.getElementById('productsBody');
+    tbody.innerHTML = '';
+
+    products.forEach(p => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${p.name}</td>
+            <td>${p.category || '-'}</td>
+            <td>${p.points_required}</td>
+            <td>${p.available_quantity}</td>
+            <td><span class="ui ${p.status === 'active' ? 'green' : 'grey'} label">${p.status}</span></td>
+            <td>
+                <button class="ui mini button editBtn" data-id="${p.id}">Edit</button>
+                <button class="ui mini red button deleteBtn" data-id="${p.id}">Delete</button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+
+    document.querySelectorAll('.editBtn').forEach(btn => {
+        btn.addEventListener('click', () => editProduct(btn.getAttribute('data-id'), products));
+    });
+    document.querySelectorAll('.deleteBtn').forEach(btn => {
+        btn.addEventListener('click', () => deleteProduct(btn.getAttribute('data-id')));
+    });
+}
+
+function editProduct(id, products) {
+    const product = products.find(p => p.id == id);
+    if (!product) return;
+
+    document.getElementById('productId').value = product.id;
+    document.getElementById('name').value = product.name;
+    document.getElementById('category').value = product.category || '';
+    document.getElementById('description').value = product.description || '';
+    document.getElementById('points_required').value = product.points_required;
+    document.getElementById('available_quantity').value = product.available_quantity;
+    document.getElementById('status').value = product.status;
+    document.getElementById('terms_and_conditions').value = product.terms_and_conditions || '';
+
+    document.getElementById('formTitle').textContent = 'Edit Product: ' + product.name;
+    formSegment.style.display = 'block';
+    window.scrollTo(0, 0);
+}
+
+async function deleteProduct(id) {
+    if (!confirm('Are you sure you want to delete this product?')) return;
+
+    try {
+        const res = await fetch(`/api/products/${id}/`, {
+            method: 'DELETE',
+            headers: authHeaders
+        });
+
+        if (res.status === 401 || res.status === 403) {
+            showError('You do not have permission to delete products.');
+            return;
+        }
+
+        showSuccess('Product deleted.');
+        loadProducts();
+    } catch (err) {
+        showError('Failed to delete product.');
+    }
+}
+
+form.addEventListener('submit', async function (e) {
+    e.preventDefault();
+
+    const id = document.getElementById('productId').value;
+    const payload = {
+        name: document.getElementById('name').value,
+        category: document.getElementById('category').value,
+        description: document.getElementById('description').value,
+        points_required: parseInt(document.getElementById('points_required').value),
+        available_quantity: parseInt(document.getElementById('available_quantity').value),
+        status: document.getElementById('status').value,
+        terms_and_conditions: document.getElementById('terms_and_conditions').value
+    };
+
+    const url = id ? `/api/products/${id}/` : '/api/products/';
+    const method = id ? 'PUT' : 'POST';
+
+    try {
+        const res = await fetch(url, {
+            method: method,
+            headers: authHeaders,
+            body: JSON.stringify(payload)
+        });
+
+        if (res.status === 401 || res.status === 403) {
+            showError('You do not have permission to perform this action.');
+            return;
+        }
+
+        const result = await res.json();
+
+        if (res.ok) {
+            showSuccess(id ? 'Product updated successfully.' : 'Product added successfully.');
+            formSegment.style.display = 'none';
+            resetForm();
+            loadProducts();
+        } else {
+            showError(JSON.stringify(result));
+        }
+    } catch (err) {
+        showError('Something went wrong. Please try again.');
+    }
+});
+
+document.getElementById('logoutBtn').addEventListener('click', function () {
+    localStorage.removeItem('admin_token');
+    localStorage.removeItem('admin_username');
+    localStorage.removeItem('is_superuser');
+    window.location.href = '/admin-login/';
+});
+
+loadProducts();
+</script>
+
+</body>
+</html>
