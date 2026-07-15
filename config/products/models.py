@@ -43,11 +43,11 @@ class ProductTierPricing(models.Model):
     )
     product = models.ForeignKey(Product , related_name='tier_pricing' , on_delete=models.CASCADE)
     membership_level = models.CharField(max_length=20 , choices=MEMBERSHIP_CHOICES)
-    poinst_required = models.PositiveIntegerField()
+    points_required = models.PositiveIntegerField()
     
     class Meta:
         unique_together  = ('product'  , 'membership_level')
         
     def __str__(self):
-        return f"{self.name} - {self.membership_level}: {self.poinst_required} pts"
+        return f"{self.product.name} - {self.membership_level}: {self.points_required} pts"
     

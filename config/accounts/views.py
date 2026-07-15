@@ -218,3 +218,6 @@ def manage_products_page(request):
 
 def manage_offers_page(request):
     return render(request , 'manage_offers.html')
+
+def product_detail_page(request, pk):
+    return render(request, 'product_detail.html')

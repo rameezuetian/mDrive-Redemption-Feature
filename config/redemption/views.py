@@ -6,6 +6,7 @@ from accounts.models import Customer
 from products.models import Product
 from offers.models import Offer
 from .models import RedemptionRecord
+from django.utils import timezone
 from core.permissions import IsSuperAdminUser
 from rest_framework.authentication import TokenAuthentication
 from core.authentication import CsrfExemptSessionAuthentication
@@ -35,6 +36,8 @@ class RedeemProductView(APIView):
 
         customer = get_object_or_404(Customer, pk=customer_id)
         product = get_object_or_404(Product, pk=product_id)
+        
+        price = product.get_price_for_tier(customer.membership_level)
 
         if not mock_wallet_check(customer, product.points_required):
             return Response(
@@ -51,7 +54,7 @@ class RedeemProductView(APIView):
         redemption = RedemptionRecord.objects.create(
             customer=customer,
             product=product,
-            points_used=product.points_required,
+            points_used=price,
             status='generated'
         )
 
@@ -157,3 +160,76 @@ class RedemptionHistoryView(APIView):
         serializer = RedemptionRecordSerializer(records , many=True)
         return Response(serializer.data)
     
+
+class ActiveRedemptionStatusView(APIView):
+    def get(self, request):
+        customer_id = request.query_params.get('customer_id')
+        product_id = request.query_params.get('product_id')
+        offer_id = request.query_params.get('offer_id')
+
+        if not customer_id or (not product_id and not offer_id):
+            return Response(
+                {"error": "customer_id and either product_id or offer_id are required"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        filters = {'customer_id': customer_id, 'status': 'generated'}   # <- renamed
+        if product_id:
+            filters['product_id'] = product_id                          # <- renamed
+        else:
+            filters['offer_id'] = offer_id                               # <- renamed
+
+        redemption = RedemptionRecord.objects.filter(**filters).order_by('-created_at').first()   # <- renamed
+
+        if not redemption or not hasattr(redemption, 'qr_code'):
+            return Response({"active": False})
+
+        qr = redemption.qr_code
+
+        if qr.is_used or qr.is_expire():
+            return Response({"active": False})
+
+        remaining_seconds = int((qr.expires_at - timezone.now()).total_seconds())
+        remaining_seconds = max(remaining_seconds, 0)
+
+        return Response({
+            "active": True,
+            "redemption_id": redemption.id,
+            "code": qr.code,
+            "expires_at": qr.expires_at,
+            "remaining_seconds": remaining_seconds
+        })
+        
+        
+
+class ActivationCountView(APIView):
+    """
+    GET /api/redeem/activation-count/?customer_id=1&product_id=2
+    GET /api/redeem/activation-count/?customer_id=1&offer_id=3
+
+    Returns how many times this customer has completed activation
+    for this specific product/offer.
+    """
+    def get(self, request):
+        customer_id = request.query_params.get('customer_id')
+        product_id = request.query_params.get('product_id')
+        offer_id = request.query_params.get('offer_id')
+
+        if not customer_id or (not product_id and not offer_id):
+            return Response(
+                {"error": "customer_id and either product_id or offer_id are required"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        filters = {
+            'customer_id': customer_id,
+            'status__in': ['completed', 'scanned', 'invoice_created']
+        }
+        if product_id:
+            filters['product_id'] = product_id
+        else:
+            filters['offer_id'] = offer_id
+
+        count = RedemptionRecord.objects.filter(**filters).count()
+
+        return Response({"activation_count": count})

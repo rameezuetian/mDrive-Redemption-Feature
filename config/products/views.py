@@ -12,25 +12,32 @@ from core.permissions import IsStaffOrAdmin
 
 class ProductListCreateView(APIView):
     def get_permissions(self):
-        if self.request.method  == "POST":
+        if self.request.method == "POST":
             return [IsStaffOrAdmin()]
         return []
-    
+
     def get_authenticators(self):
         return [TokenAuthentication(), CsrfExemptSessionAuthentication()]
-    
-    
-    def get(self , requset):
-        products =  Product.objects.all()
-        serializer = ProductSerializer(products , many=True)
+
+    def get(self, request):
+        status_filter = request.query_params.get('status', 'all')
+        products = Product.objects.all()
+
+        if status_filter == 'activated':
+            products = products.filter(status='active')
+        elif status_filter == 'expired':
+            products = products.filter(status='inactive')
+        # 'all' or anything else -> no filtering, return everything
+
+        serializer = ProductSerializer(products, many=True)
         return Response(serializer.data)
-    
-    def post(self , request):
-        serializer = ProductSerializer(data = request.data)
+
+    def post(self, request):
+        serializer = ProductSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
-            return Response(serializer.data  , status=status.HTTP_201_CREATED)
-        return Response(serializer.errors , status=status.HTTP_400_BAD_REQUEST)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
     
 class ProductDetailView(APIView):

@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>mDrive Wallet - Product Details</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/semantic-ui@2.5.0/dist/semantic.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+    <style>
+        body { background-color: #f7f8fa; }
+        .page-wrap { max-width: 700px; margin: 30px auto; padding: 0 15px; }
+        .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .qr-section { text-align: center; margin-top: 20px; }
+    </style>
+</head>
+<body>
+
+<div class="page-wrap">
+
+    <div class="page-header">
+        <a href="/products/" class="ui basic button"><i class="arrow left icon"></i> Back to Products</a>
+        <div class="ui teal label">
+            Wallet Points: <span id="pointsBadge">-</span>
+        </div>
+    </div>
+
+    <div class="ui error message" id="errorMessage" style="display:none;"></div>
+
+    <div class="ui segment" id="productSegment" style="display:none;">
+        <h2 class="ui header" id="productName"></h2>
+        <div class="ui label" id="productCategory"></div>
+        <span class="ui small blue label" id="activationBadge" style="display:none;"></span>
+
+        <div class="ui divider"></div>
+
+        <p id="productDescription"></p>
+
+        <div class="ui segment" style="background:#fafafa;">
+            <strong>Terms &amp; Conditions</strong>
+            <p id="productTerms" style="margin-top:6px; color:#555;"></p>
+        </div>
+
+        <div class="ui divider"></div>
+
+        <div id="priceArea"></div>
+        <p><span class="ui basic label" id="stockLabel"></span></p>
+
+        <div class="ui divider"></div>
+
+        <!-- Activate button (shown if no active QR) -->
+        <button class="ui fluid large teal button" id="activateBtn" style="display:none;">
+            Activate
+        </button>
+
+        <!-- QR section (shown if active QR exists) -->
+        <div class="qr-section" id="qrSection" style="display:none;">
+            <h4 class="ui header">Show This At The Outlet</h4>
+            <canvas id="qrCanvas"></canvas>
+            <p style="margin-top:10px; font-size: 13px; color:#555;">
+                <strong>Code:</strong> <span id="qrCodeText"></span>
+            </p>
+            <div class="ui label" style="margin-top:6px;">
+                <i class="clock icon"></i> <span id="countdownText">--:--</span> remaining
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+const customerId = localStorage.getItem('customer_id');
+
+if (!customerId) {
+    window.location.href = '/login/';
+}
+
+// Extract product ID from URL path: /products/<id>/
+const pathParts = window.location.pathname.split('/').filter(Boolean);
+const productId = pathParts[pathParts.length - 1];
+
+let customerMembership = null;
+let countdownInterval = null;
+
+function getPriceForTier(product, membership) {
+    if (!membership || !product.tier_pricing) return product.points_required;
+    const match = product.tier_pricing.find(tp => tp.membership_level === membership);
+    return match ? match.points_required : product.points_required;
+}
+
+function formatCountdown(seconds) {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+}
+
+async function loadCustomer() {
+    const res = await fetch(`/api/customers/${customerId}/`);
+    const data = await res.json();
+    document.getElementById('pointsBadge').textContent = data.wallet_points;
+    customerMembership = data.membership_level;
+}
+
+async function loadProduct() {
+    const errorBox = document.getElementById('errorMessage');
+
+    try {
+        const res = await fetch(`/api/products/${productId}/`);
+        if (!res.ok) {
+            errorBox.textContent = 'Product not found.';
+            errorBox.style.display = 'block';
+            return null;
+        }
+        return await res.json();
+    } catch (err) {
+        errorBox.textContent = 'Failed to load product.';
+        errorBox.style.display = 'block';
+        return null;
+    }
+}
+
+function renderProduct(product) {
+    document.getElementById('productSegment').style.display = 'block';
+    document.getElementById('productName').textContent = product.name;
+    document.getElementById('productCategory').textContent = product.category || '';
+    document.getElementById('productDescription').textContent = product.description || product.short_description || '';
+    document.getElementById('productTerms').textContent = product.terms_and_conditions || 'No specific terms provided.';
+    document.getElementById('stockLabel').textContent = `${product.available_quantity} left in stock`;
+
+    const yourPrice = getPriceForTier(product, customerMembership);
+    const isDiscounted = yourPrice !== product.points_required;
+    const priceHtml = isDiscounted
+        ? `<span class="ui big teal label">${yourPrice} pts</span> <s style="color:#aaa;">${product.points_required} pts</s>`
+        : `<span class="ui big teal label">${yourPrice} pts</span>`;
+    document.getElementById('priceArea').innerHTML = priceHtml;
+}
+
+async function loadActivationCount() {
+    const res = await fetch(`/api/redeem/activation-count/?customer_id=${customerId}&product_id=${productId}`);
+    const data = await res.json();
+    const badge = document.getElementById('activationBadge');
+    if (data.activation_count > 0) {
+        badge.textContent = `Activated ${data.activation_count} time(s)`;
+        badge.style.display = 'inline-block';
+    }
+}
+
+async function checkActiveStatus() {
+    const res = await fetch(`/api/redeem/active-status/?customer_id=${customerId}&product_id=${productId}`);
+    const data = await res.json();
+
+    const activateBtn = document.getElementById('activateBtn');
+    const qrSection = document.getElementById('qrSection');
+
+    if (data.active) {
+        activateBtn.style.display = 'none';
+        qrSection.style.display = 'block';
+
+        document.getElementById('qrCodeText').textContent = data.code;
+        QRCode.toCanvas(document.getElementById('qrCanvas'), data.code, { width: 200 }, function (error) {
+            if (error) console.error(error);
+        });
+
+        if (countdownInterval) clearInterval(countdownInterval);
+        let remaining = data.remaining_seconds;
+        const countdownEl = document.getElementById('countdownText');
+        countdownEl.textContent = formatCountdown(remaining);
+
+        countdownInterval = setInterval(() => {
+            remaining -= 1;
+            if (remaining <= 0) {
+                clearInterval(countdownInterval);
+                qrSection.style.display = 'none';
+                activateBtn.style.display = 'block';
+                return;
+            }
+            countdownEl.textContent = formatCountdown(remaining);
+        }, 1000);
+    } else {
+        qrSection.style.display = 'none';
+        activateBtn.style.display = 'block';
+    }
+}
+
+async function handleActivate() {
+    const errorBox = document.getElementById('errorMessage');
+    errorBox.style.display = 'none';
+
+    try {
+        const response = await fetch('/api/redeem/product/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                customer_id: customerId,
+                product_id: productId
+            })
+        });
+        const result = await response.json();
+
+        if (response.ok) {
+            await checkActiveStatus();
+            await loadActivationCount();
+            await loadCustomer();
+        } else {
+            errorBox.textContent = result.error || 'Activation failed.';
+            errorBox.style.display = 'block';
+            window.scrollTo(0, 0);
+        }
+    } catch (err) {
+        errorBox.textContent = 'Something went wrong. Please try again.';
+        errorBox.style.display = 'block';
+    }
+}
+
+document.getElementById('activateBtn').addEventListener('click', handleActivate);
+
+async function init() {
+    await loadCustomer();
+    const product = await loadProduct();
+    if (!product) return;
+
+    renderProduct(product);
+    await loadActivationCount();
+    await checkActiveStatus();
+}
+
+init();
+</script>
+
+</body>
+</html>

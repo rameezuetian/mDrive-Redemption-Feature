@@ -4,22 +4,14 @@
     <meta charset="UTF-8">
     <title>mDrive Wallet - Products</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/semantic-ui@2.5.0/dist/semantic.min.css">
-   <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
     <style>
-        body {
-            background-color: #f7f8fa;
-        }
-        .page-wrap {
-            max-width: 1000px;
-            margin: 30px auto;
-            padding: 0 15px;
-        }
-        .points-bar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-        }
+        body { background-color: #f7f8fa; }
+        .page-wrap { max-width: 1000px; margin: 30px auto; padding: 0 15px; }
+        .points-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .filter-bar { display: flex; justify-content: flex-end; margin-bottom: 15px; }
+        .activation-badge { margin-top: 8px; }
+        .countdown-box { margin-top: 10px; text-align: center; }
     </style>
 </head>
 <body>
@@ -40,25 +32,17 @@
         <a class="item" href="/login/">Logout</a>
     </div>
 
-    <div class="ui info message" id="activeQrBanner" style="display:none;">
-        <i class="qrcode icon"></i>
-        You have an active QR code waiting to be scanned.
-        <button class="ui mini teal button" id="showQrBtn" style="margin-left: 8px;">Show QR</button>
-        (expires in <span id="activeQrCountdown">--:--</span>)
-
-        <div id="inlineQrBox" style="display:none; margin-top: 15px; text-align: center;">
-            <canvas id="inlineQrCanvas"></canvas>
-            <p style="margin-top: 8px; font-size: 13px; color:#555;">
-                Code: <span id="inlineQrCode"></span>
-            </p>
-        </div>
+    <div class="filter-bar">
+        <select class="ui dropdown" id="statusFilter" style="min-width: 160px;">
+            <option value="activated">Activated</option>
+            <option value="expired">Expired</option>
+            <option value="all">All</option>
+        </select>
     </div>
 
     <div class="ui error message" id="errorMessage" style="display:none;"></div>
 
-    <div class="ui three stackable cards" id="productsContainer">
-        <!-- Product cards injected here -->
-    </div>
+    <div class="ui three stackable cards" id="productsContainer"></div>
 
 </div>
 
@@ -69,146 +53,168 @@ if (!customerId) {
     window.location.href = '/login/';
 }
 
+let customerMembership = null;
+
 async function loadCustomer() {
     const res = await fetch(`/api/customers/${customerId}/`);
     const data = await res.json();
     document.getElementById('pointsBadge').textContent = data.wallet_points;
+    customerMembership = data.membership_level;
 }
 
-function checkActiveQr() {
-    const code = localStorage.getItem('last_qr_code');
-    const expiry = localStorage.getItem('last_qr_expiry');
-
-    if (!code || !expiry) return;
-
-    const expiryTime = new Date(expiry).getTime();
-    const now = new Date().getTime();
-    const remainingMs = expiryTime - now;
-
-    if (remainingMs <= 0) {
-        // expired, clean up so we don't keep checking
-        localStorage.removeItem('last_qr_code');
-        localStorage.removeItem('last_qr_expiry');
-        localStorage.removeItem('last_redemption_type');
-        return;
+function getPriceForCustomer(product) {
+    if (!customerMembership || !product.tier_pricing) {
+        return product.points_required;
     }
+    const match = product.tier_pricing.find(tp => tp.membership_level === customerMembership);
+    return match ? match.points_required : product.points_required;
+}
 
-    const banner = document.getElementById('activeQrBanner');
-    const countdownEl = document.getElementById('activeQrCountdown');
-    banner.style.display = 'block';
-
-    const showQrBtn = document.getElementById('showQrBtn');
-    const inlineQrBox = document.getElementById('inlineQrBox');
-    let qrRendered = false;
-
-    showQrBtn.addEventListener('click', function () {
-        const isVisible = inlineQrBox.style.display === 'block';
-
-        if (isVisible) {
-            inlineQrBox.style.display = 'none';
-            showQrBtn.textContent = 'Show QR';
-            return;
-        }
-
-        if (!qrRendered) {
-            QRCode.toCanvas(document.getElementById('inlineQrCanvas'), code, { width: 180 }, function (error) {
-                if (error) console.error(error);
-            });
-            document.getElementById('inlineQrCode').textContent = code;
-            qrRendered = true;
-        }
-
-        inlineQrBox.style.display = 'block';
-        showQrBtn.textContent = 'Hide QR';
-    });
-
-    function tick() {
-        const remaining = expiryTime - new Date().getTime();
-        if (remaining <= 0) {
-            banner.style.display = 'none';
-            clearInterval(tickInterval);
-            localStorage.removeItem('last_qr_code');
-            localStorage.removeItem('last_qr_expiry');
-            localStorage.removeItem('last_redemption_type');
-            return;
-        }
-        const totalSeconds = Math.floor(remaining / 1000);
-        const minutes = Math.floor(totalSeconds / 60);
-        const seconds = totalSeconds % 60;
-        countdownEl.textContent = String(minutes).padStart(2, '0') + ':' + String(seconds).padStart(2, '0');
-    }
-
-    tick();
-    const tickInterval = setInterval(tick, 1000);
+function formatCountdown(seconds) {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
 }
 
 async function loadProducts() {
-    const res = await fetch('/api/products/');
-    const products = await res.json();
-    const container = document.getElementById('productsContainer');
-    container.innerHTML = '';
-
-    products
-        .filter(p => p.status === 'active')
-        .forEach(product => {
-            const card = document.createElement('div');
-            card.className = 'ui card';
-            card.innerHTML = `
-                <div class="content">
-                    <div class="header">${product.name}</div>
-                    <div class="meta">${product.category || ''}</div>
-                    <div class="description">${product.description || ''}</div>
-                </div>
-                <div class="content">
-                    <span class="ui teal label">${product.points_required} pts</span>
-                    <span class="ui basic label">${product.available_quantity} left</span>
-                </div>
-                <div class="ui bottom attached button redeemBtn" data-id="${product.id}" data-points="${product.points_required}">
-                    Redeem
-                </div>
-            `;
-            container.appendChild(card);
-        });
-
-    document.querySelectorAll('.redeemBtn').forEach(btn => {
-        btn.addEventListener('click', handleRedeem);
-    });
-}
-
-async function handleRedeem(e) {
-    const productId = e.target.getAttribute('data-id');
+    const statusValue = document.getElementById('statusFilter').value;
     const errorBox = document.getElementById('errorMessage');
     errorBox.style.display = 'none';
 
     try {
-        const response = await fetch('/api/redeem/product/', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                customer_id: customerId,
-                product_id: productId
-            })
-        });
-        const result = await response.json();
+        const res = await fetch(`/api/products/?status=${statusValue}`);
+        const products = await res.json();
+        const container = document.getElementById('productsContainer');
+        container.innerHTML = '';
 
-        if (response.ok) {
-            localStorage.setItem('last_qr_code', result.qr_code.code);
-            localStorage.setItem('last_qr_expiry', result.qr_code.expires_at);
-            localStorage.setItem('last_redemption_type', 'Product');
-            window.location.href = '/qr/';
-        } else {
-            errorBox.textContent = result.error || 'Redemption failed.';
-            errorBox.style.display = 'block';
+        products.forEach(product => {
+            const card = document.createElement('div');
+            card.className = 'ui card';
+            card.id = `product-card-${product.id}`;
+
+            const yourPrice = getPriceForCustomer(product);
+            const isDiscounted = yourPrice !== product.points_required;
+
+            const priceHtml = isDiscounted
+                ? `<span class="ui teal label">${yourPrice} pts</span> <s style="color:#aaa;">${product.points_required} pts</s>`
+                : `<span class="ui teal label">${yourPrice} pts</span>`;
+
+            const btnHtml = statusValue === 'expired'
+                ? `<div class="ui bottom attached disabled button">Expired</div>`
+                : (product.available_quantity <= 0
+                    ? `<div class="ui bottom attached disabled button">Out of Stock</div>`
+                    : `<a href="/products/${product.id}/" class="ui bottom attached button">Activate</a>`);
+
+            card.innerHTML = `
+                <div class="content">
+                    <div class="header">${product.name}</div>
+                    <div class="meta">${product.category || ''}</div>
+                    <div class="description">${product.short_description || product.description || ''}</div>
+                </div>
+                <div class="content">
+                    ${priceHtml}
+                    <span class="ui basic label">${product.available_quantity} left</span>
+                    <div class="activation-badge" id="activation-badge-${product.id}"></div>
+                    <div class="countdown-box" id="countdown-box-${product.id}" style="display:none;"></div>
+                </div>
+                ${btnHtml}
+            `;
+            container.appendChild(card);
+
+            loadCardStatus(product.id);
+        });
+
+        if (products.length === 0) {
+            container.innerHTML = '<p style="color:#888;">No products found for this filter.</p>';
         }
     } catch (err) {
-        errorBox.textContent = 'Something went wrong. Please try again.';
+        errorBox.textContent = 'Failed to load products.';
         errorBox.style.display = 'block';
     }
 }
 
-loadCustomer();
-loadProducts();
-checkActiveQr();
+async function loadCardStatus(productId) {
+    try {
+        const countRes = await fetch(`/api/redeem/activation-count/?customer_id=${customerId}&product_id=${productId}`);
+        const countData = await countRes.json();
+        const badge = document.getElementById(`activation-badge-${productId}`);
+        if (badge && countData.activation_count > 0) {
+            badge.innerHTML = `<span class="ui small blue label"><i class="check icon"></i> Activated ${countData.activation_count} time(s)</span>`;
+        }
+
+        const statusRes = await fetch(`/api/redeem/active-status/?customer_id=${customerId}&product_id=${productId}`);
+        const statusData = await statusRes.json();
+        const box = document.getElementById(`countdown-box-${productId}`);
+
+        if (statusData.active && box) {
+            box.style.display = 'block';
+            box.innerHTML = `
+                <button class="ui mini teal button showQrBtn" data-code="${statusData.code}">Show QR</button>
+                <div class="ui label" style="margin-top:6px;">
+                    <i class="clock icon"></i> <span class="countdownText">--:--</span> remaining
+                </div>
+            `;
+
+            const countdownEl = box.querySelector('.countdownText');
+            let remaining = statusData.remaining_seconds;
+
+            const interval = setInterval(() => {
+                remaining -= 1;
+                if (remaining <= 0) {
+                    clearInterval(interval);
+                    box.style.display = 'none';
+                    return;
+                }
+                countdownEl.textContent = formatCountdown(remaining);
+            }, 1000);
+            countdownEl.textContent = formatCountdown(remaining);
+
+            box.querySelector('.showQrBtn').addEventListener('click', function () {
+                showInlineQr(productId, statusData.code, box);
+            });
+        }
+    } catch (err) {
+        console.error('Failed to load card status for product', productId, err);
+    }
+}
+
+function showInlineQr(productId, code, box) {
+    let qrArea = box.querySelector('.inlineQrArea');
+    if (qrArea) {
+        qrArea.style.display = qrArea.style.display === 'none' ? 'block' : 'none';
+        return;
+    }
+
+    qrArea = document.createElement('div');
+    qrArea.className = 'inlineQrArea';
+    qrArea.style.marginTop = '10px';
+
+    const canvas = document.createElement('canvas');
+    qrArea.appendChild(canvas);
+
+    const codeText = document.createElement('p');
+    codeText.style.marginTop = '8px';
+    codeText.style.fontSize = '12px';
+    codeText.style.color = '#555';
+    codeText.style.wordBreak = 'break-all';
+    codeText.innerHTML = `<strong>Code:</strong> ${code}`;
+    qrArea.appendChild(codeText);
+
+    box.appendChild(qrArea);
+
+    QRCode.toCanvas(canvas, code, { width: 150 }, function (error) {
+        if (error) console.error(error);
+    });
+}
+
+document.getElementById('statusFilter').addEventListener('change', loadProducts);
+
+async function init() {
+    await loadCustomer();
+    await loadProducts();
+}
+
+init();
 </script>
 
 </body>
