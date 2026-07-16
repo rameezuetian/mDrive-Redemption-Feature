@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>mDrive Wallet - Partner Reports</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/semantic-ui@2.5.0/dist/semantic.min.css">
+    <style>
+        body {
+            background-color: #f7f8fa;
+        }
+
+        .page-wrap {
+            max-width: 1000px;
+            margin: 30px auto;
+            padding: 0 15px;
+        }
+
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="page-wrap">
+
+    <div class="page-header">
+        <h2 class="ui header">
+            <i class="chart bar icon"></i>
+            <div class="content">
+                Partner Reports
+                <div class="sub header" id="companyName"></div>
+            </div>
+        </h2>
+        <div>
+            <span class="ui label" style="margin-right:10px;">Partner</span>
+            <button class="ui basic button" id="logoutBtn">Logout</button>
+        </div>
+    </div>
+
+    <div class="ui secondary menu">
+        <a class="item" href="/partner-dashboard/">Offers</a>
+        <a class="item active" href="/partner-reports/">Reports</a>
+    </div>
+
+    <div class="ui error message" id="errorMessage" style="display:none;"></div>
+
+    <div class="ui four statistics" id="statsContainer" style="display:none;">
+        <div class="statistic">
+            <div class="value" id="totalOffers">0</div>
+            <div class="label">Total Offers</div>
+        </div>
+        <div class="statistic">
+            <div class="value" id="activeOffers">0</div>
+            <div class="label">Active Offers</div>
+        </div>
+        <div class="statistic">
+            <div class="value" id="expiredOffers">0</div>
+            <div class="label">Expired Offers</div>
+        </div>
+        <div class="statistic">
+            <div class="value" id="completedRedemptions">0</div>
+            <div class="label">Completed Redemptions</div>
+        </div>
+    </div>
+
+    <div class="ui divider"></div>
+
+    <h3 class="ui header">Offer Status Breakdown</h3>
+
+    <table class="ui celled striped table" id="statusTable" style="display:none;">
+        <thead>
+        <tr>
+            <th>Status</th>
+            <th>Total Offers</th>
+        </tr>
+        </thead>
+        <tbody id="statusTableBody"></tbody>
+    </table>
+
+    <div class="ui warning message" id="emptyStatusMessage" style="display:none;">
+        No offers found for this partner.
+    </div>
+
+    <div class="ui divider"></div>
+
+    <h3 class="ui header">Offer Redemption Breakdown</h3>
+
+    <table class="ui celled striped table" id="redemptionTable" style="display:none;">
+        <thead>
+        <tr>
+            <th>Offer</th>
+            <th>Completed Redemptions</th>
+        </tr>
+        </thead>
+        <tbody id="redemptionTableBody"></tbody>
+    </table>
+
+    <div class="ui warning message" id="emptyRedemptionMessage" style="display:none;">
+        No completed offer redemptions yet.
+    </div>
+
+</div>
+
+<script>
+const token = localStorage.getItem('partner_token');
+const companyName = localStorage.getItem('partner_company_name');
+
+if (!token) {
+    window.location.href = '/partner-login/';
+}
+
+document.getElementById('companyName').textContent = companyName || 'Partner Account';
+
+const authHeaders = {
+    'Content-Type': 'application/json',
+    'Authorization': 'Token ' + token
+};
+
+function logoutPartner() {
+    localStorage.removeItem('partner_token');
+    localStorage.removeItem('partner_id');
+    localStorage.removeItem('partner_company_name');
+    window.location.href = '/partner-login/';
+}
+
+function showError(message) {
+    const errorBox = document.getElementById('errorMessage');
+    errorBox.textContent = message;
+    errorBox.style.display = 'block';
+}
+
+async function loadSummary() {
+    try {
+        const response = await fetch('/api/partner/reports/summary/', { headers: authHeaders });
+
+        if (response.status === 401 || response.status === 403) {
+            logoutPartner();
+            return;
+        }
+
+        const data = await response.json();
+
+        document.getElementById('statsContainer').style.display = 'flex';
+        document.getElementById('totalOffers').textContent = data.total_offers;
+        document.getElementById('activeOffers').textContent = data.active_offers;
+        document.getElementById('expiredOffers').textContent = data.expired_offers;
+        document.getElementById('completedRedemptions').textContent = data.completed_redemptions;
+    } catch (err) {
+        showError('Failed to load summary data.');
+    }
+}
+
+async function loadStatusBreakdown() {
+    const table = document.getElementById('statusTable');
+    const tbody = document.getElementById('statusTableBody');
+    const emptyMsg = document.getElementById('emptyStatusMessage');
+
+    try {
+        const response = await fetch('/api/partner/reports/status-breakdown/', { headers: authHeaders });
+
+        if (response.status === 401 || response.status === 403) {
+            logoutPartner();
+            return;
+        }
+
+        const data = await response.json();
+
+        if (!data || data.length === 0) {
+            emptyMsg.style.display = 'block';
+            table.style.display = 'none';
+            return;
+        }
+
+        table.style.display = 'table';
+        tbody.innerHTML = '';
+
+        data.forEach(row => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td style="text-transform: capitalize;">${row.status}</td>
+                <td>${row.total}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    } catch (err) {
+        emptyMsg.textContent = 'Failed to load offer status breakdown.';
+        emptyMsg.style.display = 'block';
+    }
+}
+
+async function loadRedemptionBreakdown() {
+    const table = document.getElementById('redemptionTable');
+    const tbody = document.getElementById('redemptionTableBody');
+    const emptyMsg = document.getElementById('emptyRedemptionMessage');
+
+    try {
+        const response = await fetch('/api/partner/reports/redemption-breakdown/', { headers: authHeaders });
+
+        if (response.status === 401 || response.status === 403) {
+            logoutPartner();
+            return;
+        }
+
+        const data = await response.json();
+
+        if (!data || data.length === 0) {
+            emptyMsg.style.display = 'block';
+            table.style.display = 'none';
+            return;
+        }
+
+        table.style.display = 'table';
+        tbody.innerHTML = '';
+
+        data.forEach(row => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${row.offer__title}</td>
+                <td>${row.total}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    } catch (err) {
+        emptyMsg.textContent = 'Failed to load redemption breakdown.';
+        emptyMsg.style.display = 'block';
+    }
+}
+
+document.getElementById('logoutBtn').addEventListener('click', logoutPartner);
+
+loadSummary();
+loadStatusBreakdown();
+loadRedemptionBreakdown();
+</script>
+
+</body>
+</html>

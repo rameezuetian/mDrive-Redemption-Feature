@@ -18,6 +18,12 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
+from partners.views import (
+    partner_dashboard_page,
+    partner_login_page,
+    partner_manage_offers_page,
+    partner_reports_page,
+)
 from accounts.views import (
     signup_page , 
     login_page  ,
@@ -30,7 +36,8 @@ from accounts.views import (
      outlet_scan_page,
      manage_offers_page,
      manage_products_page,
-     product_detail_page
+     product_detail_page,
+     manage_partners_page
 )
 
 
@@ -41,6 +48,7 @@ urlpatterns = [
     path('api/' , include('accounts.urls')),
     path('api/' , include('redemption.urls')),
     path('api/' , include('reports.urls')),
+    path('api/' , include('partners.urls')),
     path('signup/' ,signup_page , name='signup-page'),
     path('login/' , login_page , name='login-page'),
     path('products/' , product_page , name='product-page'),
@@ -48,11 +56,17 @@ urlpatterns = [
     path('offers/', offers_pages , name='offers-page'),
     path('history/' , history_page , name='history-page'),
     path('admin-login' , admin_login_page , name='admin-login-page'),
-    path('admin-summary' , admin_summary_page , name='admin-summary-page'),
-    path('outlet-scan' , outlet_scan_page , name='outlet-scan-page'),
+    path('admin-summary/' , admin_summary_page , name='admin-summary-page'),
+    path('outlet-scan/' , outlet_scan_page , name='outlet-scan-page'),
     path('manage-products/' , manage_products_page , name='manage-products-page'),
     path('manage-offers/' ,manage_offers_page , name='manage-offers-page'),
     path('products/<int:pk>/', product_detail_page, name='product-detail-page'),
+    path('partner-login/' ,partner_login_page , name='partner-login-page' ),
+    path('manage-partners/', manage_partners_page, name='manage-partners-page'),
+    path('partner-dashboard/' , partner_dashboard_page , name='partner-dashboard'),
+    path('partner-manage-offers/' , partner_manage_offers_page , name='partner-manage-offers'),
+    path('partner-reports/' , partner_reports_page , name='partner-reports')
+
 
     
 ]

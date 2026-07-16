@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>mDrive Wallet - Manage Offers</title>
+    <title>mDrive Wallet - Partner Manage Offers</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/semantic-ui@2.5.0/dist/semantic.min.css">
     <style>
         body { background-color: #f7f8fa; }
@@ -16,25 +16,21 @@
 
     <div class="page-header">
         <h2 class="ui header">
-            <i class="tags icon"></i>
-            <div class="content">Manage Offers</div>
+            <i class="building icon"></i>
+            <div class="content">
+                Partner Manage Offers
+                <div class="sub header" id="companyName"></div>
+            </div>
         </h2>
         <div>
-            <span id="roleLabel" class="ui label" style="margin-right:10px;"></span>
+            <span id="roleLabel" class="ui label" style="margin-right:10px;">Partner</span>
             <button class="ui basic button" id="logoutBtn">Logout</button>
         </div>
     </div>
 
     <div class="ui secondary menu">
-        <a class="item" href="/manage-products/">Products</a>
-        <a class="item active" href="/manage-offers/">Offers</a>
-        <span class="item" id="reportsLink" style="display:none;">
-            <a href="/admin-summary/">Reports</a>
-        </span>
-        <span class="item" id="scanLink" style="display:none;">
-            <a href="/outlet-scan/">Outlet Scan</a>
-        </span>
-        <a class="item" href="/manage-partners/">Partners</a>
+        <a class="item active" href="/partner-dashboard/">Offers</a>
+        <a class="item" href="/partner-reports/">Reports</a>
     </div>
 
     <div class="ui error message" id="errorMessage" style="display:none;"></div>
@@ -44,7 +40,6 @@
         <i class="plus icon"></i> Add New Offer
     </button>
 
-    <!-- Add/Edit Form -->
     <div class="ui segment" id="offerFormSegment" style="display:none;">
         <h3 class="ui header" id="formTitle">Add Offer</h3>
         <form class="ui form" id="offerForm">
@@ -122,18 +117,14 @@
 </div>
 
 <script>
-const token = localStorage.getItem('admin_token');
-const isSuperuser = localStorage.getItem('is_superuser') === 'true';
+const token = localStorage.getItem('partner_token');
+const companyName = localStorage.getItem('partner_company_name');
 
 if (!token) {
-    window.location.href = '/admin-login/';
+    window.location.href = '/partner-login/';
 }
 
-document.getElementById('roleLabel').textContent = isSuperuser ? 'Super Admin' : 'Staff';
-if (isSuperuser) {
-    document.getElementById('reportsLink').style.display = 'inline-block';
-}
-document.getElementById('scanLink').style.display = 'inline-block';
+document.getElementById('companyName').textContent = companyName || 'Partner Account';
 
 const authHeaders = {
     'Content-Type': 'application/json',
@@ -164,6 +155,21 @@ function resetForm() {
     document.getElementById('formTitle').textContent = 'Add Offer';
 }
 
+function logoutPartner() {
+    localStorage.removeItem('partner_token');
+    localStorage.removeItem('partner_id');
+    localStorage.removeItem('partner_company_name');
+    window.location.href = '/partner-login/';
+}
+
+function handleUnauthorized(status) {
+    if (status === 401 || status === 403) {
+        logoutPartner();
+        return true;
+    }
+    return false;
+}
+
 document.getElementById('newOfferBtn').addEventListener('click', function () {
     resetForm();
     formSegment.style.display = 'block';
@@ -180,10 +186,11 @@ function formatDate(dateStr) {
 }
 
 async function loadOffers() {
-    const res = await fetch('/api/offers/');
+    const res = await fetch('/api/partner/offers/', {
+        headers: authHeaders
+    });
 
-    if (res.status === 401 || res.status === 403) {
-        window.location.href = '/admin-login/';
+    if (handleUnauthorized(res.status)) {
         return;
     }
 
@@ -240,13 +247,17 @@ async function deleteOffer(id) {
     if (!confirm('Are you sure you want to delete this offer?')) return;
 
     try {
-        const res = await fetch(`/api/offers/${id}/`, {
+        const res = await fetch(`/api/partner/offers/${id}/`, {
             method: 'DELETE',
             headers: authHeaders
         });
 
-        if (res.status === 401 || res.status === 403) {
-            showError('You do not have permission to delete offers.');
+        if (handleUnauthorized(res.status)) {
+            return;
+        }
+
+        if (!res.ok) {
+            showError('Failed to delete offer.');
             return;
         }
 
@@ -274,7 +285,7 @@ form.addEventListener('submit', async function (e) {
         redemption_instructions: document.getElementById('redemption_instructions').value
     };
 
-    const url = id ? `/api/offers/${id}/` : '/api/offers/';
+    const url = id ? `/api/partner/offers/${id}/` : '/api/partner/offers/';
     const method = id ? 'PUT' : 'POST';
 
     try {
@@ -284,8 +295,7 @@ form.addEventListener('submit', async function (e) {
             body: JSON.stringify(payload)
         });
 
-        if (res.status === 401 || res.status === 403) {
-            showError('You do not have permission to perform this action.');
+        if (handleUnauthorized(res.status)) {
             return;
         }
 
@@ -304,12 +314,7 @@ form.addEventListener('submit', async function (e) {
     }
 });
 
-document.getElementById('logoutBtn').addEventListener('click', function () {
-    localStorage.removeItem('admin_token');
-    localStorage.removeItem('admin_username');
-    localStorage.removeItem('is_superuser');
-    window.location.href = '/admin-login/';
-});
+document.getElementById('logoutBtn').addEventListener('click', logoutPartner);
 
 loadOffers();
 </script>

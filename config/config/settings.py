@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     'products',
     'redemption',
     'reports',
+    'partners'
 ]
 
 REST_FRAMEWORK = {

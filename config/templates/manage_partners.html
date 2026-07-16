@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>mDrive Wallet - Manage Partners</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/semantic-ui@2.5.0/dist/semantic.min.css">
+    <style>
+        body { background-color: #f7f8fa; }
+        .page-wrap { max-width: 900px; margin: 30px auto; padding: 0 15px; }
+        .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+
+<div class="page-wrap">
+
+    <div class="page-header">
+        <h2 class="ui header">
+            <i class="handshake outline icon"></i>
+            <div class="content">Manage Partners</div>
+        </h2>
+        <div>
+            <span class="ui label">Super Admin</span>
+            <button class="ui basic button" id="logoutBtn">Logout</button>
+        </div>
+    </div>
+
+    <div class="ui secondary menu">
+        <a class="item" href="/manage-products/">Products</a>
+        <a class="item" href="/manage-offers/">Offers</a>
+        <a class="item" href="/admin-summary/">Reports</a>
+        <a class="item" href="/outlet-scan/">Outlet Scan</a>
+        <a class="item active" href="/manage-partners/">Partners</a>
+    </div>
+
+    <div class="ui error message" id="errorMessage" style="display:none;"></div>
+    <div class="ui success message" id="successMessage" style="display:none;"></div>
+
+    <button class="ui teal button" id="newPartnerBtn" style="margin-bottom: 15px;">
+        <i class="plus icon"></i> Add New Partner
+    </button>
+
+    <div class="ui segment" id="partnerFormSegment" style="display:none;">
+        <h3 class="ui header">Create Partner Account</h3>
+        <form class="ui form" id="partnerForm">
+            <div class="two fields">
+                <div class="field">
+                    <label>Username (for partner login)</label>
+                    <input type="text" id="username" required>
+                </div>
+                <div class="field">
+                    <label>Password</label>
+                    <input type="password" id="password" required>
+                </div>
+            </div>
+            <div class="field">
+                <label>Company Name</label>
+                <input type="text" id="company_name" required>
+            </div>
+            <div class="two fields">
+                <div class="field">
+                    <label>Contact Email</label>
+                    <input type="email" id="contact_email" required>
+                </div>
+                <div class="field">
+                    <label>Contact Phone</label>
+                    <input type="text" id="contact_phone">
+                </div>
+            </div>
+
+            <button class="ui teal button" type="submit">Create Partner</button>
+            <button class="ui basic button" type="button" id="cancelFormBtn">Cancel</button>
+        </form>
+    </div>
+
+    <table class="ui celled striped table">
+        <thead>
+        <tr>
+            <th>Company Name</th>
+            <th>Username</th>
+            <th>Contact Email</th>
+            <th>Contact Phone</th>
+            <th>Created</th>
+        </tr>
+        </thead>
+        <tbody id="partnersBody"></tbody>
+    </table>
+
+</div>
+
+<script>
+const token = localStorage.getItem('admin_token');
+const isSuperuser = localStorage.getItem('is_superuser') === 'true';
+
+if (!token) {
+    window.location.href = '/admin-login/';
+}
+
+if (!isSuperuser) {
+    window.location.href = '/manage-products/';
+}
+
+const authHeaders = {
+    'Content-Type': 'application/json',
+    'Authorization': 'Token ' + token
+};
+
+const errorBox = document.getElementById('errorMessage');
+const successBox = document.getElementById('successMessage');
+const formSegment = document.getElementById('partnerFormSegment');
+const form = document.getElementById('partnerForm');
+
+function showError(msg) {
+    errorBox.textContent = msg;
+    errorBox.style.display = 'block';
+    successBox.style.display = 'none';
+}
+
+function showSuccess(msg) {
+    successBox.textContent = msg;
+    successBox.style.display = 'block';
+    errorBox.style.display = 'none';
+    setTimeout(() => { successBox.style.display = 'none'; }, 4000);
+}
+
+document.getElementById('newPartnerBtn').addEventListener('click', function () {
+    form.reset();
+    formSegment.style.display = 'block';
+});
+
+document.getElementById('cancelFormBtn').addEventListener('click', function () {
+    formSegment.style.display = 'none';
+    form.reset();
+});
+
+function formatDate(dateStr) {
+    const d = new Date(dateStr);
+    return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+async function loadPartners() {
+    try {
+        const res = await fetch('/api/partners/', { headers: authHeaders });
+
+        if (res.status === 401 || res.status === 403) {
+            window.location.href = '/admin-login/';
+            return;
+        }
+
+        const partners = await res.json();
+        const tbody = document.getElementById('partnersBody');
+        tbody.innerHTML = '';
+
+        partners.forEach(p => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${p.company_name}</td>
+                <td>${p.username}</td>
+                <td>${p.contact_email}</td>
+                <td>${p.contact_phone || '-'}</td>
+                <td>${formatDate(p.created_at)}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    } catch (err) {
+        showError('Failed to load partners.');
+    }
+}
+
+form.addEventListener('submit', async function (e) {
+    e.preventDefault();
+
+    const payload = {
+        username: document.getElementById('username').value,
+        password: document.getElementById('password').value,
+        company_name: document.getElementById('company_name').value,
+        contact_email: document.getElementById('contact_email').value,
+        contact_phone: document.getElementById('contact_phone').value
+    };
+
+    try {
+        const res = await fetch('/api/partners/create/', {
+            method: 'POST',
+            headers: authHeaders,
+            body: JSON.stringify(payload)
+        });
+        const result = await res.json();
+
+        if (res.ok) {
+            showSuccess(`Partner "${result.company_name}" created. Share these credentials with them: Username "${result.username}"`);
+            formSegment.style.display = 'none';
+            form.reset();
+            loadPartners();
+        } else {
+            showError(result.error || JSON.stringify(result));
+        }
+    } catch (err) {
+        showError('Something went wrong. Please try again.');
+    }
+});
+
+document.getElementById('logoutBtn').addEventListener('click', function () {
+    localStorage.removeItem('admin_token');
+    localStorage.removeItem('admin_username');
+    localStorage.removeItem('is_superuser');
+    window.location.href = '/admin-login/';
+});
+
+loadPartners();
+</script>
+
+</body>
+</html>

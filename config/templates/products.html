@@ -95,6 +95,7 @@ async function loadProducts() {
             const yourPrice = getPriceForCustomer(product);
             const isDiscounted = yourPrice !== product.points_required;
 
+
             const priceHtml = isDiscounted
                 ? `<span class="ui teal label">${yourPrice} pts</span> <s style="color:#aaa;">${product.points_required} pts</s>`
                 : `<span class="ui teal label">${yourPrice} pts</span>`;

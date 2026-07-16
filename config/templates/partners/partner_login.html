@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>mDrive Wallet - Partner Login</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/semantic-ui@2.5.0/dist/semantic.min.css">
+    <style>
+        body {
+            background-color: #22292f;
+        }
+    </style>
+</head>
+<body>
+
+<div class="ui middle aligned center aligned grid" style="height: 100vh;">
+    <div class="column" style="max-width: 420px;">
+
+        <h2 class="ui inverted header">
+            <i class="handshake outline icon"></i>
+            <div class="content">
+                Partner Portal
+                <div class="sub header" style="color:#aaa;">mDrive Wallet</div>
+            </div>
+        </h2>
+
+        <form class="ui large form" id="partnerLoginForm">
+            <div class="ui stacked segment">
+                <div class="field">
+                    <div class="ui left icon input">
+                        <i class="user icon"></i>
+                        <input type="text" name="username" placeholder="Partner Username" required>
+                    </div>
+                </div>
+                <div class="field">
+                    <div class="ui left icon input">
+                        <i class="lock icon"></i>
+                        <input type="password" name="password" placeholder="Password" required>
+                    </div>
+                </div>
+                <button class="ui fluid large olive submit button" type="submit">
+                    Login
+                </button>
+            </div>
+
+            <div class="ui error message" id="errorMessage"></div>
+        </form>
+
+    </div>
+</div>
+
+<script>
+document.getElementById('partnerLoginForm').addEventListener('submit', async function (e) {
+    e.preventDefault();
+
+    const formData = new FormData(this);
+    const data = Object.fromEntries(formData);
+
+    const errorBox = document.getElementById('errorMessage');
+    errorBox.style.display = 'none';
+
+    try {
+        const response = await fetch('/api/partners/login/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        const result = await response.json();
+
+        if (response.ok) {
+            localStorage.setItem('partner_token', result.token);
+            localStorage.setItem('partner_id', result.partner_id);
+            localStorage.setItem('partner_company_name', result.company_name);
+            window.location.href = '/partner-dashboard/';
+        } else {
+            errorBox.textContent = result.error || 'Login failed.';
+            errorBox.style.display = 'block';
+        }
+    } catch (err) {
+        errorBox.textContent = 'Something went wrong. Please try again.';
+        errorBox.style.display = 'block';
+    }
+});
+</script>
+
+</body>
+</html>

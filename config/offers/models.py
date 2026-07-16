@@ -1,12 +1,12 @@
 from django.db import models
-
+from partners.models import Partner
 class Offer(models.Model):
     STATUS_CHOICES = (
         ('active', 'Active'),
         ('inactive', 'Inactive'),
         ('expired', 'Expired'),
     )
-
+    partner = models.ForeignKey(Partner , null = True , blank=True , related_name='offers' , on_delete=models.SET_NULL)
     title = models.CharField(max_length=255)
     banner = models.ImageField(upload_to='offers/', blank=True, null=True)
     description = models.TextField(blank=True)
