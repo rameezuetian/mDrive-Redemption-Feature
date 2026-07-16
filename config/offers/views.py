@@ -25,7 +25,8 @@ class OfferListCreateView(APIView):
         today = timezone.now().date()
 
         if status_filter == 'activated':
-            offers = offers.filter(status='active', start_date__lte=today, end_date__gte=today)
+            # Customer-facing offers should include both currently active and upcoming active offers.
+            offers = offers.filter(status='active', end_date__gte=today)
         elif status_filter == 'expired':
             offers = offers.filter(end_date__lt=today)
 
