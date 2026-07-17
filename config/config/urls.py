@@ -21,8 +21,7 @@ from django.conf.urls.static import static
 from partners.views import (
     partner_dashboard_page,
     partner_login_page,
-    partner_manage_offers_page,
-    partner_reports_page,
+    partner_scan_page
 )
 from accounts.views import (
     signup_page , 
@@ -64,9 +63,7 @@ urlpatterns = [
     path('partner-login/' ,partner_login_page , name='partner-login-page' ),
     path('manage-partners/', manage_partners_page, name='manage-partners-page'),
     path('partner-dashboard/' , partner_dashboard_page , name='partner-dashboard'),
-    path('partner-manage-offers/' , partner_manage_offers_page , name='partner-manage-offers'),
-    path('partner-reports/' , partner_reports_page , name='partner-reports')
-
+    path('partner-scan/', partner_scan_page , name='partner-scan-page')
 
     
 ]

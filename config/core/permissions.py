@@ -23,4 +23,26 @@ class IsStaffOrAdmin(BasePermission):
     """
     def has_permission(self, request, view):
         return bool(request.user and request.user.is_authenticated and request.user.is_staff)
+
+    
+class IsPartnerUser(BasePermission):
+    """
+    Allows access only to users with a linked Partner profile.
+    """
+    def has_permission(self , request , view):
+        return bool(
+            request.user and request.user.is_authenticated and hasattr(request.user , 'partner_profile')
+        )
+    
+class IsStaffAdminOrPartner(BasePermission):
+    """
+    Allows Staff/Admin (full scan access) OR Partner (restricted to own offers, checked in the view).
+    """
+    def has_permission(self , request, view):
+        return bool(
+            request.user.is_staff or hasattr(request.user  , 'partner_profile')
+        )
+    
+    
+    
     

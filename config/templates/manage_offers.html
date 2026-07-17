@@ -34,7 +34,6 @@
         <span class="item" id="scanLink" style="display:none;">
             <a href="/outlet-scan/">Outlet Scan</a>
         </span>
-        <a class="item" href="/manage-partners/">Partners</a>
     </div>
 
     <div class="ui error message" id="errorMessage" style="display:none;"></div>
@@ -92,6 +91,12 @@
                 </div>
             </div>
             <div class="field">
+                <label>Partner (optional — leave blank for mDrive's own offer)</label>
+                <select class="ui dropdown" id="partner">
+                    <option value="">-- None (mDrive internal offer) --</option>
+                </select>
+            </div>
+            <div class="field">
                 <label>Terms and Conditions</label>
                 <textarea id="terms_and_conditions" rows="2"></textarea>
             </div>
@@ -113,6 +118,7 @@
             <th>Eligibility</th>
             <th>Valid Dates</th>
             <th>Status</th>
+            <th>Partner</th>
             <th>Actions</th>
         </tr>
         </thead>
@@ -179,6 +185,24 @@ function formatDate(dateStr) {
     return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
+async function loadPartnersDropdown() {
+    try {
+        const res = await fetch('/api/partners/', { headers: authHeaders });
+        if (!res.ok) return;
+        const partners = await res.json();
+        const select = document.getElementById('partner');
+
+        partners.forEach(p => {
+            const opt = document.createElement('option');
+            opt.value = p.id;
+            opt.textContent = p.company_name;
+            select.appendChild(opt);
+        });
+    } catch (err) {
+        console.error('Failed to load partners list', err);
+    }
+}
+
 async function loadOffers() {
     const res = await fetch('/api/offers/');
 
@@ -199,6 +223,7 @@ async function loadOffers() {
             <td>${o.membership_eligibility || 'All tiers'}</td>
             <td>${formatDate(o.start_date)} - ${formatDate(o.end_date)}</td>
             <td><span class="ui ${o.status === 'active' ? 'green' : (o.status === 'expired' ? 'red' : 'grey')} label">${o.status}</span></td>
+            <td>${o.partner_name || '<span style="color:#aaa;">mDrive</span>'}</td>
             <td>
                 <button class="ui mini button editBtn" data-id="${o.id}">Edit</button>
                 <button class="ui mini red button deleteBtn" data-id="${o.id}">Delete</button>
@@ -230,6 +255,7 @@ function editOffer(id, offers) {
     document.getElementById('redemption_limit').value = offer.redemption_limit;
     document.getElementById('terms_and_conditions').value = offer.terms_and_conditions || '';
     document.getElementById('redemption_instructions').value = offer.redemption_instructions || '';
+    document.getElementById('partner').value = offer.partner || '';
 
     document.getElementById('formTitle').textContent = 'Edit Offer: ' + offer.title;
     formSegment.style.display = 'block';
@@ -271,7 +297,8 @@ form.addEventListener('submit', async function (e) {
         membership_eligibility: document.getElementById('membership_eligibility').value,
         redemption_limit: parseInt(document.getElementById('redemption_limit').value),
         terms_and_conditions: document.getElementById('terms_and_conditions').value,
-        redemption_instructions: document.getElementById('redemption_instructions').value
+        redemption_instructions: document.getElementById('redemption_instructions').value,
+        partner: document.getElementById('partner').value || null
     };
 
     const url = id ? `/api/offers/${id}/` : '/api/offers/';
@@ -311,6 +338,7 @@ document.getElementById('logoutBtn').addEventListener('click', function () {
     window.location.href = '/admin-login/';
 });
 
+loadPartnersDropdown();
 loadOffers();
 </script>
 

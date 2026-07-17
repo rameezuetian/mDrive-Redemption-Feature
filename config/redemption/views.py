@@ -7,7 +7,7 @@ from products.models import Product
 from offers.models import Offer
 from .models import RedemptionRecord
 from django.utils import timezone
-from core.permissions import IsSuperAdminUser
+from core.permissions import IsSuperAdminUser ,IsStaffAdminOrPartner
 from rest_framework.authentication import TokenAuthentication
 from core.authentication import CsrfExemptSessionAuthentication
 from .serializers import RedemptionRecordSerializer
@@ -113,7 +113,7 @@ class ScanQRView(APIView):
     Body: { "code": "the-qr-code-uuid" }
     """
     authentication_classes = [TokenAuthentication, CsrfExemptSessionAuthentication]
-    permission_classes = [IsSuperAdminUser]
+    permission_classes = [IsStaffAdminOrPartner]
     def post(self, request):
         code = request.data.get('code')
 
@@ -128,6 +128,14 @@ class ScanQRView(APIView):
             return Response({"error": error}, status=status.HTTP_400_BAD_REQUEST)
 
         redemption = qr.redemption_record
+        if hasattr(request.user , 'partner_profile'):
+            partner = request.user.partner_profile
+            if not redemption.offer or redemption.offer.partner_id != partner.id:
+                return Response(
+                    {"error":"You can only scan redemption for their own offers"},
+                    status=status.HTTP_403_FORBIDDEN    
+                )
+        
         customer = redemption.customer
 
         qr.is_used = True
