@@ -11,7 +11,7 @@ class QRCodeSerializer(serializers.ModelSerializer):
 class RedemptionRecordSerializer(serializers.ModelSerializer):
     qr_code = QRCodeSerializer(read_only=True)
     product_name = serializers.CharField(source = 'product.name' , read_only = True , default = None)
-    offer_name = serializers.CharField(source ='offer.html' , read_only = True ,default = None)
+    offer_name = serializers.CharField(source ='offer.title' , read_only = True ,default = None)
 
     class Meta:
         model = RedemptionRecord

@@ -8,6 +8,15 @@
         body { background-color: #f7f8fa; }
         .page-wrap { max-width: 1000px; margin: 30px auto; padding: 0 15px; }
         .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .image-preview {
+            display: none;
+            width: 120px;
+            height: 120px;
+            object-fit: cover;
+            border-radius: 12px;
+            border: 1px solid #dfe3e8;
+            margin-top: 8px;
+        }
     </style>
 </head>
 <body>
@@ -61,6 +70,11 @@
             <div class="field">
                 <label>Description</label>
                 <textarea id="description" rows="2"></textarea>
+            </div>
+            <div class="field">
+                <label>Offer Image</label>
+                <input type="file" id="banner" accept="image/*">
+                <img id="bannerPreview" class="image-preview" alt="Offer preview">
             </div>
             <div class="three fields">
                 <div class="field">
@@ -142,7 +156,6 @@ if (isSuperuser) {
 document.getElementById('scanLink').style.display = 'inline-block';
 
 const authHeaders = {
-    'Content-Type': 'application/json',
     'Authorization': 'Token ' + token
 };
 
@@ -168,6 +181,18 @@ function resetForm() {
     form.reset();
     document.getElementById('offerId').value = '';
     document.getElementById('formTitle').textContent = 'Add Offer';
+    setPreviewImage('');
+}
+
+function setPreviewImage(src) {
+    const preview = document.getElementById('bannerPreview');
+    if (src) {
+        preview.src = src;
+        preview.style.display = 'block';
+        return;
+    }
+    preview.removeAttribute('src');
+    preview.style.display = 'none';
 }
 
 document.getElementById('newOfferBtn').addEventListener('click', function () {
@@ -256,6 +281,8 @@ function editOffer(id, offers) {
     document.getElementById('terms_and_conditions').value = offer.terms_and_conditions || '';
     document.getElementById('redemption_instructions').value = offer.redemption_instructions || '';
     document.getElementById('partner').value = offer.partner || '';
+    document.getElementById('banner').value = '';
+    setPreviewImage(offer.banner || '');
 
     document.getElementById('formTitle').textContent = 'Edit Offer: ' + offer.title;
     formSegment.style.display = 'block';
@@ -287,19 +314,27 @@ form.addEventListener('submit', async function (e) {
     e.preventDefault();
 
     const id = document.getElementById('offerId').value;
-    const payload = {
-        title: document.getElementById('title').value,
-        category: document.getElementById('category').value,
-        description: document.getElementById('description').value,
-        start_date: document.getElementById('start_date').value,
-        end_date: document.getElementById('end_date').value,
-        status: document.getElementById('status').value,
-        membership_eligibility: document.getElementById('membership_eligibility').value,
-        redemption_limit: parseInt(document.getElementById('redemption_limit').value),
-        terms_and_conditions: document.getElementById('terms_and_conditions').value,
-        redemption_instructions: document.getElementById('redemption_instructions').value,
-        partner: document.getElementById('partner').value || null
-    };
+    const payload = new FormData();
+    payload.append('title', document.getElementById('title').value);
+    payload.append('category', document.getElementById('category').value);
+    payload.append('description', document.getElementById('description').value);
+    payload.append('start_date', document.getElementById('start_date').value);
+    payload.append('end_date', document.getElementById('end_date').value);
+    payload.append('status', document.getElementById('status').value);
+    payload.append('membership_eligibility', document.getElementById('membership_eligibility').value);
+    payload.append('redemption_limit', parseInt(document.getElementById('redemption_limit').value));
+    payload.append('terms_and_conditions', document.getElementById('terms_and_conditions').value);
+    payload.append('redemption_instructions', document.getElementById('redemption_instructions').value);
+
+    const partnerValue = document.getElementById('partner').value;
+    if (partnerValue) {
+        payload.append('partner', partnerValue);
+    }
+
+    const bannerInput = document.getElementById('banner');
+    if (bannerInput.files[0]) {
+        payload.append('banner', bannerInput.files[0]);
+    }
 
     const url = id ? `/api/offers/${id}/` : '/api/offers/';
     const method = id ? 'PUT' : 'POST';
@@ -308,7 +343,7 @@ form.addEventListener('submit', async function (e) {
         const res = await fetch(url, {
             method: method,
             headers: authHeaders,
-            body: JSON.stringify(payload)
+            body: payload
         });
 
         if (res.status === 401 || res.status === 403) {
@@ -329,6 +364,18 @@ form.addEventListener('submit', async function (e) {
     } catch (err) {
         showError('Something went wrong. Please try again.');
     }
+});
+
+document.getElementById('banner').addEventListener('change', function (e) {
+    const file = e.target.files[0];
+    if (!file) {
+        return;
+    }
+    const reader = new FileReader();
+    reader.onload = function (event) {
+        setPreviewImage(event.target.result);
+    };
+    reader.readAsDataURL(file);
 });
 
 document.getElementById('logoutBtn').addEventListener('click', function () {

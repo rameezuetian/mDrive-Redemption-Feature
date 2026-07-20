@@ -200,10 +200,10 @@ class MyOfferRedemptionView(APIView):
         
         data = [
             {
+                "transaction_id": r.id,
+                "redeemed_at": r.updated_at,
                 "customer_name":r.customer.name,
                 "status":r.status,
-                "invoice_number":r.invoice_number,
-                "redeemed_at":r.updated_at
             }
             for r in records
         ]

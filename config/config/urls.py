@@ -36,6 +36,7 @@ from accounts.views import (
      manage_offers_page,
      manage_products_page,
      product_detail_page,
+     offer_detail_page,
      manage_partners_page
 )
 
@@ -60,6 +61,7 @@ urlpatterns = [
     path('manage-products/' , manage_products_page , name='manage-products-page'),
     path('manage-offers/' ,manage_offers_page , name='manage-offers-page'),
     path('products/<int:pk>/', product_detail_page, name='product-detail-page'),
+    path('offers/<int:pk>/', offer_detail_page, name='offer-detail-page'),
     path('partner-login/' ,partner_login_page , name='partner-login-page' ),
     path('manage-partners/', manage_partners_page, name='manage-partners-page'),
     path('partner-dashboard/' , partner_dashboard_page , name='partner-dashboard'),

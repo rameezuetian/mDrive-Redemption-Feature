@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>mDrive Wallet - Product Details</title>
+    <title>mDrive Wallet - Offer Details</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/semantic-ui@2.5.0/dist/semantic.min.css">
     <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
     <style>
@@ -20,16 +20,26 @@
         }
         .hero-placeholder {
             display: none;
-            min-height: 400px;
+            min-height: 150px;
             border-radius: 20px;
             margin-bottom: 18px;
-            background: linear-gradient(135deg, #d9f3ef, #edf6ff);
+            background: linear-gradient(135deg, #fff4d7, #ffe9e2);
             align-items: center;
             justify-content: center;
             color: #6b7280;
             text-transform: uppercase;
             letter-spacing: 0.08em;
             font-size: 13px;
+        }
+        .offer-facts {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
+            margin: 18px 0;
+        }
+        .offer-facts .ui.segment {
+            margin: 0;
+            background: #fafafa;
         }
     </style>
 </head>
@@ -38,7 +48,7 @@
 <div class="page-wrap">
 
     <div class="page-header">
-        <a href="/products/" class="ui basic button"><i class="arrow left icon"></i> Back to Products</a>
+        <a href="/offers/" class="ui basic button"><i class="arrow left icon"></i> Back to Offers</a>
         <div class="ui teal label">
             Wallet Points: <span id="pointsBadge">-</span>
         </div>
@@ -46,35 +56,47 @@
 
     <div class="ui error message" id="errorMessage" style="display:none;"></div>
 
-    <div class="ui segment" id="productSegment" style="display:none;">
-        <img id="productImage" class="hero-image" alt="Product image">
-        <div id="productImagePlaceholder" class="hero-placeholder">No image available</div>
-        <h2 class="ui header" id="productName"></h2>
-        <div class="ui label" id="productCategory"></div>
+    <div class="ui segment" id="offerSegment" style="display:none;">
+        <img id="offerImage" class="hero-image" alt="Offer image">
+        <div id="offerImagePlaceholder" class="hero-placeholder">No image available</div>
+
+        <h2 class="ui header" id="offerTitle"></h2>
+        <div class="ui label" id="offerCategory"></div>
         <span class="ui small blue label" id="activationBadge" style="display:none;"></span>
 
-        <div class="ui divider"></div>
+        <div class="offer-facts">
+            <div class="ui segment">
+                <strong>Validity</strong>
+                <p id="offerValidity" style="margin-top:6px; color:#555;"></p>
+            </div>
+            <div class="ui segment">
+                <strong>Eligibility</strong>
+                <p id="offerEligibility" style="margin-top:6px; color:#555;"></p>
+            </div>
+            <div class="ui segment">
+                <strong>Redemption Limit</strong>
+                <p id="offerLimit" style="margin-top:6px; color:#555;"></p>
+            </div>
+        </div>
 
-        <p id="productDescription"></p>
+        <p id="offerDescription"></p>
 
         <div class="ui segment" style="background:#fafafa;">
             <strong>Terms &amp; Conditions</strong>
-            <p id="productTerms" style="margin-top:6px; color:#555;"></p>
+            <p id="offerTerms" style="margin-top:6px; color:#555;"></p>
+        </div>
+
+        <div class="ui segment" style="background:#fafafa;">
+            <strong>How To Redeem</strong>
+            <p id="offerInstructions" style="margin-top:6px; color:#555;"></p>
         </div>
 
         <div class="ui divider"></div>
 
-        <div id="priceArea"></div>
-        <p><span class="ui basic label" id="stockLabel"></span></p>
-
-        <div class="ui divider"></div>
-
-        <!-- Activate button (shown if no active QR) -->
         <button class="ui fluid large teal button" id="activateBtn" style="display:none;">
-            Activate
+            Activate Offer
         </button>
 
-        <!-- QR section (shown if active QR exists) -->
         <div class="qr-section" id="qrSection" style="display:none;">
             <h4 class="ui header">Show This At The Outlet</h4>
             <canvas id="qrCanvas"></canvas>
@@ -96,23 +118,36 @@ if (!customerId) {
     window.location.href = '/login/';
 }
 
-// Extract product ID from URL path: /products/<id>/
 const pathParts = window.location.pathname.split('/').filter(Boolean);
-const productId = pathParts[pathParts.length - 1];
+const offerId = pathParts[pathParts.length - 1];
 
 let customerMembership = null;
 let countdownInterval = null;
+let currentOffer = null;
 
-function getPriceForTier(product, membership) {
-    if (!membership || !product.tier_pricing) return product.points_required;
-    const match = product.tier_pricing.find(tp => tp.membership_level === membership);
-    return match ? match.points_required : product.points_required;
+function formatDate(dateStr) {
+    const d = new Date(dateStr);
+    return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 function formatCountdown(seconds) {
     const m = Math.floor(seconds / 60);
     const s = seconds % 60;
     return String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+}
+
+function isEligible(offer) {
+    if (!offer.membership_eligibility || offer.membership_eligibility.trim().toLowerCase() === 'all tiers') {
+        return true;
+    }
+    const tiers = offer.membership_eligibility.split(',').map(t => t.trim().toLowerCase());
+    return customerMembership && tiers.includes(customerMembership.toLowerCase());
+}
+
+function isExpired(offer) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return new Date(offer.end_date) < today || offer.status === 'expired';
 }
 
 async function loadCustomer() {
@@ -122,54 +157,50 @@ async function loadCustomer() {
     customerMembership = data.membership_level;
 }
 
-async function loadProduct() {
+async function loadOffer() {
     const errorBox = document.getElementById('errorMessage');
 
     try {
-        const res = await fetch(`/api/products/${productId}/`);
+        const res = await fetch(`/api/offers/${offerId}/`);
         if (!res.ok) {
-            errorBox.textContent = 'Product not found.';
+            errorBox.textContent = 'Offer not found.';
             errorBox.style.display = 'block';
             return null;
         }
         return await res.json();
     } catch (err) {
-        errorBox.textContent = 'Failed to load product.';
+        errorBox.textContent = 'Failed to load offer.';
         errorBox.style.display = 'block';
         return null;
     }
 }
 
-function renderProduct(product) {
-    document.getElementById('productSegment').style.display = 'block';
-    const productImage = document.getElementById('productImage');
-    const productImagePlaceholder = document.getElementById('productImagePlaceholder');
+function renderOffer(offer) {
+    document.getElementById('offerSegment').style.display = 'block';
+    const offerImage = document.getElementById('offerImage');
+    const offerImagePlaceholder = document.getElementById('offerImagePlaceholder');
 
-    if (product.image) {
-        productImage.src = product.image;
-        productImage.style.display = 'block';
-        productImagePlaceholder.style.display = 'none';
+    if (offer.banner) {
+        offerImage.src = offer.banner;
+        offerImage.style.display = 'block';
+        offerImagePlaceholder.style.display = 'none';
     } else {
-        productImage.style.display = 'none';
-        productImagePlaceholder.style.display = 'flex';
+        offerImage.style.display = 'none';
+        offerImagePlaceholder.style.display = 'flex';
     }
 
-    document.getElementById('productName').textContent = product.name;
-    document.getElementById('productCategory').textContent = product.category || '';
-    document.getElementById('productDescription').textContent = product.description || product.short_description || '';
-    document.getElementById('productTerms').textContent = product.terms_and_conditions || 'No specific terms provided.';
-    document.getElementById('stockLabel').textContent = `${product.available_quantity} left in stock`;
-
-    const yourPrice = getPriceForTier(product, customerMembership);
-    const isDiscounted = yourPrice !== product.points_required;
-    const priceHtml = isDiscounted
-        ? `<span class="ui big teal label">${yourPrice} pts</span> <s style="color:#aaa;">${product.points_required} pts</s>`
-        : `<span class="ui big teal label">${yourPrice} pts</span>`;
-    document.getElementById('priceArea').innerHTML = priceHtml;
+    document.getElementById('offerTitle').textContent = offer.title;
+    document.getElementById('offerCategory').textContent = offer.category || 'Offer';
+    document.getElementById('offerValidity').textContent = `${formatDate(offer.start_date)} - ${formatDate(offer.end_date)}`;
+    document.getElementById('offerEligibility').textContent = offer.membership_eligibility || 'All tiers';
+    document.getElementById('offerLimit').textContent = `${offer.redemption_limit} redemption(s)`;
+    document.getElementById('offerDescription').textContent = offer.description || 'No additional description provided.';
+    document.getElementById('offerTerms').textContent = offer.terms_and_conditions || 'No specific terms provided.';
+    document.getElementById('offerInstructions').textContent = offer.redemption_instructions || 'Activate this offer and scan the QR at the outlet.';
 }
 
 async function loadActivationCount() {
-    const res = await fetch(`/api/redeem/activation-count/?customer_id=${customerId}&product_id=${productId}`);
+    const res = await fetch(`/api/redeem/activation-count/?customer_id=${customerId}&offer_id=${offerId}`);
     const data = await res.json();
     const badge = document.getElementById('activationBadge');
     if (data.activation_count > 0) {
@@ -179,7 +210,7 @@ async function loadActivationCount() {
 }
 
 async function checkActiveStatus() {
-    const res = await fetch(`/api/redeem/active-status/?customer_id=${customerId}&product_id=${productId}`);
+    const res = await fetch(`/api/redeem/active-status/?customer_id=${customerId}&offer_id=${offerId}`);
     const data = await res.json();
 
     const activateBtn = document.getElementById('activateBtn');
@@ -204,28 +235,62 @@ async function checkActiveStatus() {
             if (remaining <= 0) {
                 clearInterval(countdownInterval);
                 qrSection.style.display = 'none';
-                activateBtn.style.display = 'block';
+                toggleActivationState();
                 return;
             }
             countdownEl.textContent = formatCountdown(remaining);
         }, 1000);
-    } else {
-        qrSection.style.display = 'none';
-        activateBtn.style.display = 'block';
+        return;
     }
+
+    qrSection.style.display = 'none';
+    toggleActivationState();
+}
+
+function toggleActivationState() {
+    const activateBtn = document.getElementById('activateBtn');
+    if (!currentOffer) {
+        activateBtn.style.display = 'none';
+        return;
+    }
+    const eligible = isEligible(currentOffer);
+    const expired = isExpired(currentOffer);
+    const inactive = currentOffer.status === 'inactive';
+
+    if (!eligible) {
+        activateBtn.textContent = 'Not Eligible For Your Tier';
+        activateBtn.classList.add('disabled');
+        activateBtn.style.display = 'block';
+        return;
+    }
+
+    if (expired || inactive) {
+        activateBtn.textContent = expired ? 'Offer Expired' : 'Offer Inactive';
+        activateBtn.classList.add('disabled');
+        activateBtn.style.display = 'block';
+        return;
+    }
+
+    activateBtn.textContent = 'Activate Offer';
+    activateBtn.classList.remove('disabled');
+    activateBtn.style.display = 'block';
 }
 
 async function handleActivate() {
+    if (!currentOffer || !isEligible(currentOffer) || isExpired(currentOffer) || currentOffer.status === 'inactive') {
+        return;
+    }
+
     const errorBox = document.getElementById('errorMessage');
     errorBox.style.display = 'none';
 
     try {
-        const response = await fetch('/api/redeem/product/', {
+        const response = await fetch('/api/redeem/offer/', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 customer_id: customerId,
-                product_id: productId
+                offer_id: offerId
             })
         });
         const result = await response.json();
@@ -233,7 +298,6 @@ async function handleActivate() {
         if (response.ok) {
             await checkActiveStatus();
             await loadActivationCount();
-            await loadCustomer();
         } else {
             errorBox.textContent = result.error || 'Activation failed.';
             errorBox.style.display = 'block';
@@ -249,10 +313,10 @@ document.getElementById('activateBtn').addEventListener('click', handleActivate)
 
 async function init() {
     await loadCustomer();
-    const product = await loadProduct();
-    if (!product) return;
+    currentOffer = await loadOffer();
+    if (!currentOffer) return;
 
-    renderProduct(product);
+    renderOffer(currentOffer);
     await loadActivationCount();
     await checkActiveStatus();
 }

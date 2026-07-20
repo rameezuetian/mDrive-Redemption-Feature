@@ -222,6 +222,9 @@ def manage_offers_page(request):
 def product_detail_page(request, pk):
     return render(request, 'product_detail.html')
 
+def offer_detail_page(request, pk):
+    return render(request, 'offer_detail.html')
+
 def manage_partners_page(request):
     return render(request, 'manage_partners.html')
 

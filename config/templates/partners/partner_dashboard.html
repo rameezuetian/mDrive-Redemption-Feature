@@ -152,17 +152,17 @@ async function toggleRedemptions(offerId) {
 
         let rows = data.redemptions.map(r => `
             <tr>
+                <td>${r.transaction_id || '-'}</td>
+                <td>${formatDateTime(r.redeemed_at)}</td>
                 <td>${r.customer_name}</td>
                 <td><span class="ui ${r.status === 'completed' ? 'green' : 'blue'} label">${r.status}</span></td>
-                <td>${r.invoice_number || '-'}</td>
-                <td>${formatDateTime(r.redeemed_at)}</td>
             </tr>
         `).join('');
 
         panel.innerHTML = `
             <table class="ui very compact celled table">
                 <thead>
-                <tr><th>Customer</th><th>Status</th><th>Invoice #</th><th>Redeemed At</th></tr>
+                <tr><th>Transaction ID</th><th>Redeemed At</th><th>Customer</th><th>Status</th></tr>
                 </thead>
                 <tbody>${rows}</tbody>
             </table>
