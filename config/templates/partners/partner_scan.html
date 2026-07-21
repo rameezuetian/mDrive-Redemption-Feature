@@ -59,7 +59,7 @@
 </div>
 
 <script>
-const token = localStorage.getItem('partner_token');
+const token = sessionStorage.getItem('partner_token');
 
 if (!token) {
     window.location.href = '/partner-login/';
@@ -86,7 +86,12 @@ document.getElementById('scanForm').addEventListener('submit', async function (e
         });
 
         if (response.status === 401) {
+            sessionStorage.removeItem('partner_token');
+            sessionStorage.removeItem('partner_id');
+            sessionStorage.removeItem('partner_company_name');
             localStorage.removeItem('partner_token');
+            localStorage.removeItem('partner_id');
+            localStorage.removeItem('partner_company_name');
             window.location.href = '/partner-login/';
             return;
         }

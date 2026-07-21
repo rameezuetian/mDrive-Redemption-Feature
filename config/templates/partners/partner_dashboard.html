@@ -23,9 +23,8 @@
                 <div class="sub header" id="companyName" style="color:#888;"></div>
             </div>
         </h2>
-        <button class="ui basic button" id="logoutBtn">Logout</button>
         <a href="/partner-scan/" class="ui teal button">Scan QR</a>
-<button class="ui basic button" id="logoutBtn">Logout</button>
+        <button class="ui basic button" id="logoutBtn">Logout</button>
     </div>
 
     <div class="ui error message" id="errorMessage" style="display:none;"></div>
@@ -39,8 +38,8 @@
 </div>
 
 <script>
-const token = localStorage.getItem('partner_token');
-const companyName = localStorage.getItem('partner_company_name');
+const token = sessionStorage.getItem('partner_token');
+const companyName = sessionStorage.getItem('partner_company_name');
 
 if (!token) {
     window.location.href = '/partner-login/';
@@ -173,6 +172,9 @@ async function toggleRedemptions(offerId) {
 }
 
 document.getElementById('logoutBtn').addEventListener('click', function () {
+    sessionStorage.removeItem('partner_token');
+    sessionStorage.removeItem('partner_id');
+    sessionStorage.removeItem('partner_company_name');
     localStorage.removeItem('partner_token');
     localStorage.removeItem('partner_id');
     localStorage.removeItem('partner_company_name');

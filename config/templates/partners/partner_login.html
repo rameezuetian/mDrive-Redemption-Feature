@@ -67,9 +67,12 @@ document.getElementById('partnerLoginForm').addEventListener('submit', async fun
         const result = await response.json();
 
         if (response.ok) {
-            localStorage.setItem('partner_token', result.token);
-            localStorage.setItem('partner_id', result.partner_id);
-            localStorage.setItem('partner_company_name', result.company_name);
+            localStorage.removeItem('partner_token');
+            localStorage.removeItem('partner_id');
+            localStorage.removeItem('partner_company_name');
+            sessionStorage.setItem('partner_token', result.token);
+            sessionStorage.setItem('partner_id', result.partner_id);
+            sessionStorage.setItem('partner_company_name', result.company_name);
             window.location.href = '/partner-dashboard/';
         } else {
             errorBox.textContent = result.error || 'Login failed.';
